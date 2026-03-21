@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIKA Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./assistant.css" />
+  </head>
+  <body>
+    <main class="assistant-layout">
+      <section class="assistant-hero">
+        <p class="assistant-kicker">SIKA</p>
+        <h1>Assistant financier web Oceanic Conseils</h1>
+        <p class="assistant-copy">
+          Version texte prioritaire, avec une structure pr&ecirc;te pour la voix,
+          l'internationalisation et les donn&eacute;es de march&eacute;.
+        </p>
+        <div class="assistant-highlights">
+          <article>
+            <h2>Objectif</h2>
+            <p>R&eacute;pondre vite, clairement et de fa&ccedil;on p&eacute;dagogique aux questions financi&egrave;res.</p>
+          </article>
+          <article>
+            <h2>Langues</h2>
+            <p>Fran&ccedil;ais en priorit&eacute;, puis extension progressive vers Fon et Mina.</p>
+          </article>
+          <article>
+            <h2>Cadre</h2>
+            <p>Informations &eacute;ducatives, sans promesse de rendement ni conseil engageant automatis&eacute;.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="assistant-chat-shell">
+        <header class="assistant-chat-header">
+          <div>
+            <p class="assistant-label">Chat en direct</p>
+            <h2>Parlez avec SIKA</h2>
+          </div>
+          <select id="assistant-language" aria-label="Choisir la langue">
+            <option value="fr">Fran&ccedil;ais</option>
+            <option value="fon">Fon</option>
+            <option value="mina">Mina</option>
+          </select>
+        </header>
+
+        <div id="assistant-messages" class="assistant-messages"></div>
+        <p id="assistant-status" class="assistant-status"></p>
+
+        <form id="assistant-form" class="assistant-composer">
+          <textarea
+            id="assistant-input"
+            rows="3"
+            placeholder="Exemple : explique-moi comment construire une &eacute;pargne de s&eacute;curit&eacute;."
+          ></textarea>
+          <div class="assistant-actions">
+            <button type="button" id="assistant-mic" class="secondary-button">
+              Micro en attente
+            </button>
+            <button type="submit" class="primary-button">Envoyer</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script src="./assistant.js"></script>
+  </body>
+</html>

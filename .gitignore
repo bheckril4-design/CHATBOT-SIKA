@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+.mypy_cache/
+.ruff_cache/
+.env
+.env.local
+*.pyc
+*.pyo
+*.pyd
+dist/
+build/
+node_modules/
