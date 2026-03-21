@@ -25,7 +25,14 @@ Utiliser ces valeurs :
 
 - Root Directory : `backend`
 - Runtime : `Docker`
-- Dockerfile Path : `./Dockerfile`
+- Dockerfile Path : `Dockerfile`
+- Docker Build Context Directory : `.`
+
+Note :
+
+- quand `Root Directory` vaut `backend`, Render interprete `Dockerfile Path` et `Docker Build Context Directory`
+  relativement a ce dossier ;
+- l'interface peut afficher un prefixe visuel `backend/` automatiquement, ce qui est normal.
 
 Variables d'environnement a definir :
 
@@ -35,7 +42,7 @@ APP_VERSION=1.0.0
 ENVIRONMENT=production
 DEMO_MODE=false
 ALLOWED_ORIGINS=https://sika.oceanicconseils.com,https://www.sika.oceanicconseils.com
-TRUSTED_HOSTS=sika-api.oceanicconseils.com
+TRUSTED_HOSTS=sika-api.oceanicconseils.com,*.onrender.com
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.2
 OPENAI_REASONING_EFFORT=none
@@ -63,6 +70,9 @@ Ensuite, dans Hostinger DNS :
 
 - si Render te donne une cible DNS, cree un `CNAME` sur `sika-api`
 - si tu deployes sur un VPS avec IP fixe, cree un `A record` sur `sika-api`
+
+Quand le custom domain est verifie et que le service repond bien, tu peux resserrer `TRUSTED_HOSTS`
+en remplacant `*.onrender.com` par l'hostname Render exact du service si tu veux un verrouillage plus strict.
 
 ## 4. Verification
 

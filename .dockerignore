@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+backend/.venv
+node_modules
+dist
+build
+.pytest_cache
+pytest-cache-files-*/
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.local
+backend/.env
