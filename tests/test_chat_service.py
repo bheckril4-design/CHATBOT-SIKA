@@ -183,3 +183,23 @@ def test_chat_service_resolves_market_request_for_xof_eur() -> None:
     assert market_request["asset_type"] == "forex"
     assert market_request["base_currency"] == "XOF"
     assert market_request["quote_currency"] == "EUR"
+
+
+def test_chat_service_formats_assistant_history_as_output_text() -> None:
+    service = ChatService(Settings(demo_mode=False, openai_api_key="test-key"))
+    payload = ChatRequest(
+        message="bonjour",
+        language="fr",
+        history=[
+            {"role": "assistant", "content": "Bonjour. Je suis SIKA."},
+            {"role": "user", "content": "salut"},
+        ],
+    )
+
+    prompt = asyncio.run(service._build_prompt(payload, "fr", service._extract_context(payload)))
+
+    assistant_items = [item for item in prompt if item["role"] == "assistant"]
+    user_items = [item for item in prompt if item["role"] == "user"]
+
+    assert assistant_items[0]["content"][0]["type"] == "output_text"
+    assert user_items[0]["content"][0]["type"] == "input_text"

@@ -126,7 +126,17 @@ class ChatService:
             prompt.append({"role": "system", "content": [{"type": "input_text", "text": tool_context}]})
 
         for item in payload.history[-self.settings.max_history_messages :]:
-            prompt.append({"role": item.role, "content": [{"type": "input_text", "text": item.content}]})
+            prompt.append(
+                {
+                    "role": item.role,
+                    "content": [
+                        {
+                            "type": "output_text" if item.role == "assistant" else "input_text",
+                            "text": item.content,
+                        }
+                    ],
+                }
+            )
 
         prompt.append({"role": "user", "content": [{"type": "input_text", "text": payload.message}]})
         return prompt
