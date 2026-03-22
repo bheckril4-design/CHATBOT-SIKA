@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Bot, ExternalLink, Globe2, Mic, Send } from 'lucide-react';
+import { Bot, ExternalLink, Globe2, Mic, MicOff, Send, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -10,18 +10,29 @@ import {
   appendMessage,
   getOrCreateUserId,
   requestAssistantReply,
-  voiceComingSoonMessage,
   welcomeByLanguage,
 } from '@/lib/assistant';
 import { getApiBase } from '@/lib/api';
 
 const API_BASE = getApiBase();
+const SPEECH_LANGUAGE_MAP = {
+  fr: 'fr-FR',
+  fon: 'fr-FR',
+  mina: 'fr-FR',
+};
 
 const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const lastSpokenMessageIdRef = useRef(null);
+  const shouldSpeakNextReplyRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceInputSupported, setIsVoiceInputSupported] = useState(false);
+  const [isVoiceOutputSupported, setIsVoiceOutputSupported] = useState(false);
+  const [isVoicePlaybackEnabled, setIsVoicePlaybackEnabled] = useState(false);
   const [language, setLanguage] = useState('fr');
   const [messages, setMessages] = useState([
     {
@@ -40,6 +51,44 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setIsVoiceInputSupported(typeof Recognition === 'function');
+    setIsVoiceOutputSupported('speechSynthesis' in window);
+
+    return () => {
+      recognitionRef.current?.stop?.();
+      window.speechSynthesis?.cancel?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isVoiceOutputSupported) {
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'assistant') {
+      return;
+    }
+
+    if (lastSpokenMessageIdRef.current === lastMessage.id) {
+      return;
+    }
+
+    if (!isVoicePlaybackEnabled && !shouldSpeakNextReplyRef.current) {
+      return;
+    }
+
+    speakAssistantReply(lastMessage.content, language);
+    lastSpokenMessageIdRef.current = lastMessage.id;
+    shouldSpeakNextReplyRef.current = false;
+  }, [messages, language, isVoiceOutputSupported, isVoicePlaybackEnabled]);
+
   const handleLanguageChange = (event) => {
     const nextLanguage = event.target.value;
     setLanguage(nextLanguage);
@@ -52,10 +101,34 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
     );
   };
 
-  const handleSendMessage = async () => {
-    const message = inputValue.trim();
+  const speakAssistantReply = (text, currentLanguage) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return;
+    }
+
+    const cleanedText = String(text || '').trim();
+    if (!cleanedText) {
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    utterance.lang = SPEECH_LANGUAGE_MAP[currentLanguage] || 'fr-FR';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const sendMessage = async (rawMessage, options = {}) => {
+    const message = rawMessage.trim();
     if (!message || isLoading) {
       return;
+    }
+
+    if (options.fromVoice && isVoiceOutputSupported) {
+      shouldSpeakNextReplyRef.current = true;
+      setIsVoicePlaybackEnabled(true);
     }
 
     const history = messages.slice(-MAX_CONTEXT_MESSAGES).map((item) => ({
@@ -110,6 +183,105 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
       window.clearTimeout(timeoutId);
       setIsLoading(false);
     }
+  };
+
+  const handleSendMessage = async () => {
+    await sendMessage(inputValue);
+  };
+
+  const handleVoiceInput = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (typeof Recognition !== 'function') {
+      setMessages((prev) =>
+        appendMessage(prev, {
+          id: `voice-unavailable-${Date.now()}`,
+          role: 'assistant',
+          content:
+            "La dictée vocale dépend du navigateur. Elle fonctionne surtout dans Chrome ou Edge récents.",
+        })
+      );
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop?.();
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognitionRef.current = recognition;
+    recognition.lang = SPEECH_LANGUAGE_MAP[language] || 'fr-FR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      const message =
+        event.error === 'not-allowed'
+          ? "Le navigateur a refusé l'accès au micro. Autorisez le micro puis réessayez."
+          : "La dictée vocale n'a pas abouti. Réessayez dans un endroit plus calme.";
+
+      setMessages((prev) =>
+        appendMessage(prev, {
+          id: `voice-error-${Date.now()}`,
+          role: 'assistant',
+          content: message,
+        })
+      );
+    };
+
+    recognition.onresult = async (event) => {
+      const transcript = Array.from(event.results || [])
+        .map((result) => result[0]?.transcript || '')
+        .join(' ')
+        .trim();
+
+      if (!transcript) {
+        return;
+      }
+
+      setInputValue(transcript);
+      await sendMessage(transcript, { fromVoice: true });
+    };
+
+    recognition.start();
+  };
+
+  const toggleVoicePlayback = () => {
+    if (!isVoiceOutputSupported) {
+      setMessages((prev) =>
+        appendMessage(prev, {
+          id: `voice-output-unavailable-${Date.now()}`,
+          role: 'assistant',
+          content:
+            "La lecture vocale dépend du navigateur. Si elle est absente ici, essayez Chrome, Edge ou Safari récent.",
+        })
+      );
+      return;
+    }
+
+    setIsVoicePlaybackEnabled((prev) => {
+      const nextValue = !prev;
+      if (!nextValue) {
+        window.speechSynthesis?.cancel?.();
+      } else {
+        lastSpokenMessageIdRef.current = messages[messages.length - 1]?.id || null;
+      }
+      return nextValue;
+    });
   };
 
   const panelClassName =
@@ -220,22 +392,28 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
       <footer className="border-t border-white/10 bg-black/15 p-4">
         <div className="mb-3 flex items-center justify-between gap-3 text-xs text-white/45">
           <span>Informations &eacute;ducatives, pas de promesse de rendement.</span>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-white/55 transition hover:text-white/80"
-            onClick={() =>
-              setMessages((prev) =>
-                appendMessage(prev, {
-                  id: `voice-${Date.now()}`,
-                  role: 'assistant',
-                  content: voiceComingSoonMessage,
-                })
-              )
-            }
-          >
-            <Mic className="h-3.5 w-3.5" />
-            Voix bient&ocirc;t
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-white/55 transition hover:text-white/80"
+              onClick={handleVoiceInput}
+            >
+              {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              {isListening ? 'Écoute...' : 'Dicter'}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-white/55 transition hover:text-white/80"
+              onClick={toggleVoicePlayback}
+            >
+              {isVoicePlaybackEnabled ? (
+                <Volume2 className="h-3.5 w-3.5" />
+              ) : (
+                <VolumeX className="h-3.5 w-3.5" />
+              )}
+              {isVoicePlaybackEnabled ? 'Lecture activée' : 'Lecture vocale'}
+            </button>
+          </div>
         </div>
 
         <div className="flex items-end gap-2">

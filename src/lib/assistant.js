@@ -155,27 +155,28 @@ function buildSavingsReply(context) {
   }
 
   if (context.monthlySavingsAmount) {
+    const reserveShare = Math.round(context.monthlySavingsAmount * 0.4);
+    const projectShare = Math.round(context.monthlySavingsAmount * 0.3);
     return (
-      `Si vous pouvez épargner ${formatAmount(context.monthlySavingsAmount)} par mois, le plus utile est de séparer ` +
-      "réserve de sécurité et argent de projet. " +
-      "Commencez par mettre l'équivalent de quelques mois de dépenses de côté, puis automatisez un versement régulier. " +
-      "Si vous voulez, je peux vous proposer un plan simple en 3 étapes à partir de ce montant mensuel."
+      `Avec ${formatAmount(context.monthlySavingsAmount)} par mois, vous pouvez déjà construire quelque chose de solide. ` +
+      `Je commencerais par mettre environ ${formatAmount(reserveShare)} de côté pour la réserve de sécurité et ${formatAmount(projectShare)} pour vos projets à court ou moyen terme. ` +
+      "Le reste peut servir à prendre doucement l'habitude d'investir de façon régulière. " +
+      "Si vous voulez, je peux maintenant vous transformer ça en plan simple en 3 étapes."
     );
   }
 
   if (context.amount) {
     return (
-      `Si vous partez avec ${formatAmount(context.amount)}, le plus utile est de séparer ` +
-      "réserve de sécurité et argent de projet. " +
-      "Commencez par mettre l'équivalent de quelques mois de dépenses de côté, puis automatisez un versement régulier. " +
-      "Si vous voulez, je peux vous proposer un plan simple en 3 étapes à partir de votre revenu mensuel."
+      `Avec ${formatAmount(context.amount)} au départ, je ne chercherais pas tout de suite la performance. ` +
+      "Je commencerais par protéger une partie en réserve disponible, puis j'installerais une épargne mensuelle simple et régulière. " +
+      "Si vous voulez, donnez-moi votre revenu mensuel et je vous propose une répartition concrète."
     );
   }
 
   return (
-    "Pour épargner efficacement, commencez par un montant automatique réaliste, même modeste, " +
-    "puis construisez une réserve de sécurité avant de chercher du rendement. " +
-    "Donnez-moi votre revenu mensuel et vos charges fixes si vous voulez une méthode concrète."
+    "Pour bien démarrer, il n'est pas nécessaire de viser gros tout de suite. " +
+    "Le plus utile est de mettre en place une épargne automatique réaliste, de construire une réserve de sécurité, puis d'augmenter progressivement l'effort quand le budget le permet. " +
+    "Si vous me donnez votre revenu mensuel, je peux vous proposer une méthode simple et concrète."
   );
 }
 
@@ -252,9 +253,9 @@ function buildInvestmentReply(context) {
   if (context.amount && context.monthlySavingsAmount) {
     if (context.durationMonths) {
       return (
-        `Avec ${formatAmount(context.amount)} déjà disponibles et ${monthlyPart} par mois${horizonPart}${riskPart}, je structurerais en 3 poches. ` +
-        "D'abord une réserve de sécurité vraiment disponible, ensuite une poche projets pour les besoins des 12 à 24 prochains mois, puis une poche investissement diversifiée pour le reste. " +
-        `En pratique, vous pouvez garder une petite partie des ${monthlyPart} pour la trésorerie et investir progressivement le solde sur un portefeuille diversifié. ` +
+        `Avec ${formatAmount(context.amount)} déjà disponibles et ${monthlyPart} par mois${horizonPart}${riskPart}, vous avez déjà une bonne base. ` +
+        "Je structurerais cela en 3 poches : une réserve disponible, une poche projets pour ce qui peut arriver dans les 12 à 24 prochains mois, puis une poche investissement diversifiée pour le moyen terme. " +
+        `Sur les nouveaux versements, vous pouvez garder une petite partie des ${monthlyPart} pour la trésorerie et investir progressivement le reste pour lisser le risque. ` +
         "Si vous voulez, je peux maintenant vous proposer 3 allocations types et vous dire comment répartir aussi les nouveaux versements mensuels."
       );
     }
@@ -262,7 +263,7 @@ function buildInvestmentReply(context) {
     return (
       `Avec ${formatAmount(context.amount)} aujourd'hui et ${monthlyPart} par mois, je commencerais par séparer votre effort en deux : épargne de sécurité d'un côté, investissement progressif de l'autre. ` +
       "Conservez d'abord une poche disponible pour les imprévus et les projets proches, puis investissez progressivement une partie fixe chaque mois pour lisser le risque. " +
-      "Pour la partie investissement, donnez-moi simplement votre horizon et votre profil de risque, et je vous propose une répartition concrète."
+      "Pour la partie investissement, dites-moi simplement votre horizon et si vous voulez quelque chose de prudent, équilibré ou plus dynamique, et je vous propose une répartition concrète."
     );
   }
 
@@ -303,8 +304,8 @@ function buildInvestmentReply(context) {
   }
 
   return (
-    "Pour vous conseiller utilement sur un investissement, j'ai surtout besoin de trois infos : montant, horizon et tolérance au risque. " +
-    "Si vous voulez aller vite, répondez juste sous la forme : montant / durée / prudent-équilibré-dynamique."
+    "Je peux vous orienter utilement sur un investissement, mais il me manque encore trois repères : le montant, la durée visée et votre niveau de prudence face au risque. " +
+    "Vous pouvez me le dire naturellement, par exemple : j'ai 25 000 à placer sur 5 ans, profil équilibré."
   );
 }
 
@@ -337,6 +338,13 @@ function buildAllocationPlans(context) {
 }
 
 function buildGeneralReply(context) {
+  if (context.isGreetingOnly) {
+    return (
+      "Bonjour. Dites-moi simplement ce que vous voulez faire : mieux épargner, investir progressivement, comprendre un crédit ou préparer un objectif comme la retraite. " +
+      "Vous pouvez parler naturellement, par exemple : j'ai 25 000 aujourd'hui et 200 000 par mois, comment m'organiser ?"
+    );
+  }
+
   if (context.isFollowUp && context.topic) {
     return (
       "Je peux aller plus loin, mais j'ai besoin d'un détail concret pour sortir du générique. " +
@@ -346,7 +354,7 @@ function buildGeneralReply(context) {
 
   return (
     "Je peux vous aider sur l'épargne, le budget, le crédit, la retraite et les bases de l'investissement. " +
-    "Pour une réponse plus utile, dites-moi directement votre objectif, le montant concerné, votre horizon et si vous acceptez ou non la volatilité."
+    "Pour que ma réponse soit vraiment utile, dites-moi simplement votre objectif, les montants en jeu et votre horizon. Je m'adapte ensuite."
   );
 }
 
@@ -365,6 +373,7 @@ function extractConversationContext(history, message) {
   const wantsAllocationPlan = isAllocationRequest(currentNormalized);
   const wantsSavingsPlan = isSavingsPlanRequest(currentNormalized);
   const isAffirmativeFollowUp = isAffirmativeFollowUpMessage(currentNormalized);
+  const isGreetingOnly = isGreetingOnlyMessage(currentNormalized);
   const amount = findLatestAmount(userMessages);
   const monthlySavingsAmount = findLatestMonthlyAmount(userMessages);
   const durationMonths = findLatestDurationMonths(userMessages);
@@ -413,6 +422,7 @@ function extractConversationContext(history, message) {
     riskProfile,
     isFollowUp: isAdviceFollowUp(currentNormalized),
     isAffirmativeFollowUp,
+    isGreetingOnly,
     wantsAllocationPlan,
     wantsSavingsPlan,
   };
@@ -579,6 +589,11 @@ function isAffirmativeFollowUpMessage(normalizedMessage) {
     'tres bien',
     'parfait',
   ]);
+}
+
+function isGreetingOnlyMessage(normalizedMessage) {
+  const stripped = normalizedMessage.trim();
+  return ['bonjour', 'bonsoir', 'salut', 'hello', 'bjr', 'coucou'].includes(stripped);
 }
 
 function isAllocationRequest(normalizedMessage) {
