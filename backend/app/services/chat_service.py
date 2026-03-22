@@ -21,21 +21,21 @@ from app.services.calculation_service import run_calculation
 from app.services.finance_service import FinanceService
 
 BASE_SYSTEM_PROMPT = """
-Tu es SIKA, un assistant financier concis, pedagogique, fiable et proactif.
-Tu aides en priorite des utilisateurs en Afrique francophone.
+Tu es SIKA, un assistant financier concis, pédagogique, fiable et proactif.
+Tu aides en priorité des utilisateurs en Afrique francophone.
 
-Regles:
-- commence par une reponse directe et utile, pas par une formule generique;
-- exploite l'historique recent pour eviter de reposer les memes questions;
-- quand le montant, la duree ou le taux sont deja presents, donne une orientation concrete;
-- si des donnees internes ou un calcul verifie sont fournis, appuie-toi dessus explicitement;
-- quand l'utilisateur demande un avis pratique, formule d'abord une recommandation provisoire, puis le point critique a verifier pour affiner;
-- pour une comparaison, propose 2 ou 3 options clairement nommees;
-- quand il y a des chiffres, fais une synthese numerique utile au lieu de rester abstrait;
-- n'invente jamais une donnee de marche ni un resultat de calcul;
-- ne promets jamais de rendement garanti;
-- ne fournis jamais de conseil d'investissement personnalise, de promesse de gain, ni d'instruction fiscale ou legale definitive;
-- formule les reponses comme un contenu educatif, prudent et actionnable.
+Règles :
+- commence par une réponse directe et utile, pas par une formule générique ;
+- exploite l'historique récent pour éviter de reposer les mêmes questions ;
+- quand le montant, la durée ou le taux sont déjà présents, donne une orientation concrète ;
+- si des données internes ou un calcul vérifié sont fournis, appuie-toi dessus explicitement ;
+- quand l'utilisateur demande un avis pratique, formule d'abord une recommandation provisoire, puis le point critique à vérifier pour affiner ;
+- pour une comparaison, propose 2 ou 3 options clairement nommées ;
+- quand il y a des chiffres, fais une synthèse numérique utile au lieu de rester abstrait ;
+- n'invente jamais une donnée de marché ni un résultat de calcul ;
+- ne promets jamais de rendement garanti ;
+- ne fournis jamais de conseil d'investissement personnalisé, de promesse de gain, ni d'instruction fiscale ou légale définitive ;
+- formule les réponses comme un contenu éducatif, prudent et actionnable.
 """.strip()
 
 CALCULATION_LABELS = {
@@ -89,8 +89,8 @@ class ChatService:
 
         if not self.client:
             if self.settings.openai_api_key and AsyncOpenAI is None:
-                raise HTTPException(status_code=503, detail="Le package OpenAI n'est pas installe sur ce serveur.")
-            raise HTTPException(status_code=503, detail="Le mode demo est desactive et OPENAI_API_KEY n'est pas configure.")
+                raise HTTPException(status_code=503, detail="Le package OpenAI n'est pas installé sur ce serveur.")
+            raise HTTPException(status_code=503, detail="Le mode démo est désactivé et OPENAI_API_KEY n'est pas configuré.")
 
         try:
             prompt = await self._build_prompt(payload, language, context)
@@ -109,7 +109,7 @@ class ChatService:
 
         answer = (response.output_text or "").strip()
         if not answer:
-            raise HTTPException(status_code=502, detail="La reponse IA est vide. Merci de reessayer.")
+            raise HTTPException(status_code=502, detail="La réponse IA est vide. Merci de réessayer.")
 
         return ChatResponse(answer=answer, language=language, source="openai", user_id=user_id)
 
@@ -120,9 +120,9 @@ class ChatService:
                 "type": "input_text",
                 "text": (
                     f"{BASE_SYSTEM_PROMPT}\n\nLangue de sortie cible: {language}.\n"
-                    "Si la langue est 'fr', reponds en francais. "
-                    "Quand une reponse courte suffit, reste concise. Quand un calcul ou une comparaison est utile, "
-                    "donne les chiffres importants, l'interpretation et le point de vigilance."
+                    "Si la langue est 'fr', réponds en français. "
+                    "Quand une réponse courte suffit, reste concise. Quand un calcul ou une comparaison est utile, "
+                    "donne les chiffres importants, l'interprétation et le point de vigilance."
                 ),
             }],
         }]
@@ -194,7 +194,7 @@ class ChatService:
                     return message.strip()
 
         message = str(exc).strip()
-        return message or "requete invalide ou modele non disponible."
+        return message or "requête invalide ou modèle non disponible."
 
     def _resolve_language(self, requested: str) -> str:
         return "fr" if requested == "auto" else requested
@@ -373,7 +373,7 @@ class ChatService:
 
     async def _demo_answer(self, context: dict[str, Any], language: str) -> str:
         if language in {"fon", "mina"}:
-            return "Je peux deja donner une orientation simple ici. Si vous voulez une reponse plus riche, reformulez aussi en francais."
+            return "Je peux déjà donner une orientation simple ici. Si vous voulez une réponse plus riche, reformulez aussi en français."
         calculation_request, calculation_response, market_response = await self._collect_tool_results(context)
 
         if market_response is not None and context.get("wants_market_data"):
@@ -409,12 +409,12 @@ class ChatService:
         if response.change_percent is not None:
             change_part = f", soit {response.change_percent:+.2f} %"
 
-        note_part = f" Source: {response.provider}." if response.provider != "demo" else " Valeur indicative de demonstration."
+        note_part = f" Source: {response.provider}." if response.provider != "demo" else " Valeur indicative de démonstration."
         return (
             f"Le dernier niveau disponible pour {response.symbol} ressort autour de {response.price:,.6f} {response.currency}".replace(",", " ")
             + change_part
             + ". "
-            + (response.notes or "Taux spot recupere a la demande.")
+            + (response.notes or "Taux spot récupéré à la demande.")
             + note_part
         )
 
@@ -429,7 +429,7 @@ class ChatService:
         if response.asset_type == "forex":
             return (
                 f"Repere marche: {response.symbol} vaut environ {response.price:,.6f} {response.currency}.".replace(",", " ")
-                + " Utile si vous comparez un objectif local a une reference en devise."
+                + " Utile si vous comparez un objectif local à une référence en devise."
             )
 
         if response.asset_type in {"crypto", "stock"}:
@@ -439,7 +439,7 @@ class ChatService:
             return (
                 f"Repere marche: {response.symbol} cote autour de {response.price:,.2f} {response.currency}".replace(",", " ")
                 + change_part
-                + ". Cela sert de point de reference, pas de promesse de rendement."
+                + ". Cela sert de point de référence, pas de promesse de rendement."
             )
 
         return ""
@@ -457,12 +457,12 @@ class ChatService:
             real_future_value = response.breakdown.get("real_future_value")
             taxes_due = response.breakdown.get("taxes_due")
             base = (
-                f"Projection SIKA: avec ces hypotheses, le capital net projete ressort autour de {self._format_amount(response.result)} {response.currency or 'XOF'}."
+                f"Projection SIKA : avec ces hypothèses, le capital net projeté ressort autour de {self._format_amount(response.result)} {response.currency or 'XOF'}."
             )
             if isinstance(real_future_value, (int, float)):
-                base += f" En valeur reelle apres inflation, cela correspond a environ {self._format_amount(float(real_future_value))} {response.currency or 'XOF'}."
+                base += f" En valeur réelle après inflation, cela correspond à environ {self._format_amount(float(real_future_value))} {response.currency or 'XOF'}."
             if isinstance(taxes_due, (int, float)) and taxes_due > 0:
-                base += f" Les impots estimes sur les gains representent environ {self._format_amount(float(taxes_due))} {response.currency or 'XOF'}."
+                base += f" Les impôts estimés sur les gains représentent environ {self._format_amount(float(taxes_due))} {response.currency or 'XOF'}."
             return base
 
         if response.type == "loan-payment":
@@ -471,15 +471,15 @@ class ChatService:
             if not isinstance(total_monthly_payment, (int, float)):
                 return ""
             message = (
-                f"Simulation SIKA: la mensualite totale estimee ressort autour de {self._format_amount(float(total_monthly_payment))} {response.currency or 'XOF'}."
+                f"Simulation SIKA : la mensualité totale estimée ressort autour de {self._format_amount(float(total_monthly_payment))} {response.currency or 'XOF'}."
             )
             if isinstance(total_payment, (int, float)):
-                message += f" Le cout total estime du credit atteint environ {self._format_amount(float(total_payment))} {response.currency or 'XOF'}."
+                message += f" Le coût total estimé du crédit atteint environ {self._format_amount(float(total_payment))} {response.currency or 'XOF'}."
             return message
 
         if response.type == "simple-interest":
             return (
-                f"Projection SIKA: le montant final net ressort autour de {self._format_amount(response.result)} {response.currency or 'XOF'}."
+                f"Projection SIKA : le montant final net ressort autour de {self._format_amount(response.result)} {response.currency or 'XOF'}."
             )
 
         return ""
@@ -495,29 +495,29 @@ class ChatService:
             reserve_share = round(monthly_savings_amount * 0.4)
             project_share = round(monthly_savings_amount * 0.3)
             return (
-                f"Avec {self._format_amount(monthly_savings_amount)} par mois, vous pouvez deja construire quelque chose de solide. "
-                f"Je commencerais par mettre environ {self._format_amount(reserve_share)} de cote pour la reserve de securite et {self._format_amount(project_share)} pour vos projets a court ou moyen terme. "
-                "Le reste peut servir a prendre doucement l'habitude d'investir de facon reguliere. "
-                "Si vous voulez, je peux maintenant vous transformer ca en plan simple en 3 etapes."
+                f"Avec {self._format_amount(monthly_savings_amount)} par mois, vous pouvez déjà construire quelque chose de solide. "
+                f"Je commencerais par mettre environ {self._format_amount(reserve_share)} de côté pour la réserve de sécurité et {self._format_amount(project_share)} pour vos projets à court ou moyen terme. "
+                "Le reste peut servir à prendre doucement l'habitude d'investir de façon régulière. "
+                "Si vous voulez, je peux maintenant vous transformer ça en plan simple en 3 étapes."
             )
         amount = context.get("amount")
         if amount is not None:
             return (
-                f"Avec {self._format_amount(amount)} au depart, je ne chercherais pas tout de suite la performance. "
-                "Je commencerais par proteger une partie en reserve disponible, puis j'installerais une epargne mensuelle simple et reguliere. "
-                "Si vous voulez, donnez-moi votre revenu mensuel et je vous propose une repartition concrete."
+                f"Avec {self._format_amount(amount)} au départ, je ne chercherais pas tout de suite la performance. "
+                "Je commencerais par protéger une partie en réserve disponible, puis j'installerais une épargne mensuelle simple et régulière. "
+                "Si vous voulez, donnez-moi votre revenu mensuel et je vous propose une répartition concrète."
             )
         return (
-            "Pour bien demarrer, il n'est pas necessaire de viser gros tout de suite. "
-            "Le plus utile est de mettre en place une epargne automatique realiste, de construire une reserve de securite, puis d'augmenter progressivement l'effort quand le budget le permet. "
-            "Si vous me donnez votre revenu mensuel, je peux vous proposer une methode simple et concrete."
+            "Pour bien démarrer, il n'est pas nécessaire de viser gros tout de suite. "
+            "Le plus utile est de mettre en place une épargne automatique réaliste, de construire une réserve de sécurité, puis d'augmenter progressivement l'effort quand le budget le permet. "
+            "Si vous me donnez votre revenu mensuel, je peux vous proposer une méthode simple et concrète."
         )
 
     def _build_savings_plan_reply(self, context: dict[str, Any]) -> str:
         monthly_amount = context.get("monthly_savings_amount") or context.get("amount")
         if monthly_amount is None:
             return (
-                "Voici un plan simple en 3 etapes: 1. securiser une reserve de precaution, 2. automatiser un montant fixe chaque mois, 3. augmenter progressivement l'effort d'epargne quand le revenu progresse. "
+                "Voici un plan simple en 3 étapes : 1. sécuriser une réserve de précaution, 2. automatiser un montant fixe chaque mois, 3. augmenter progressivement l'effort d'épargne quand le revenu progresse. "
                 "Si vous me donnez votre revenu mensuel net et vos charges fixes, je peux le traduire en montants concrets."
             )
 
@@ -525,35 +525,35 @@ class ChatService:
         project_amount = round(monthly_amount * 0.3)
         progression_amount = max(0, round(monthly_amount - reserve_amount - project_amount))
         return (
-            f"Voici un plan simple en 3 etapes avec {self._format_amount(monthly_amount)} par mois:\n"
-            f"1. Reserve de securite: mettez {self._format_amount(reserve_amount)} par mois de cote jusqu'a atteindre au moins 2 a 3 mois de depenses essentielles.\n"
-            f"2. Objectif court ou moyen terme: affectez {self._format_amount(project_amount)} par mois a un support disponible pour vos projets des 12 a 36 prochains mois.\n"
-            f"3. Progression: gardez {self._format_amount(progression_amount)} par mois pour un objectif plus long terme ou pour augmenter graduellement votre effort d'epargne.\n"
-            "Quand la reserve est suffisante, vous pouvez rediriger une partie de l'etape 1 vers l'etape 2 ou 3. Si vous me donnez votre revenu mensuel net, je peux recalibrer ce plan plus finement."
+            f"Voici un plan simple en 3 étapes avec {self._format_amount(monthly_amount)} par mois :\n"
+            f"1. Réserve de sécurité : mettez {self._format_amount(reserve_amount)} par mois de côté jusqu'à atteindre au moins 2 à 3 mois de dépenses essentielles.\n"
+            f"2. Objectif court ou moyen terme : affectez {self._format_amount(project_amount)} par mois à un support disponible pour vos projets des 12 à 36 prochains mois.\n"
+            f"3. Progression : gardez {self._format_amount(progression_amount)} par mois pour un objectif plus long terme ou pour augmenter graduellement votre effort d'épargne.\n"
+            "Quand la réserve est suffisante, vous pouvez rediriger une partie de l'étape 1 vers l'étape 2 ou 3. Si vous me donnez votre revenu mensuel net, je peux recalibrer ce plan plus finement."
         )
 
     def _build_credit_demo_reply(self, context: dict[str, Any]) -> str:
         duration_months = context.get("duration_months")
         if duration_months:
             return (
-                f"Avec un horizon de {self._format_duration(duration_months)}, regardez surtout la mensualite supportable, le cout total du credit et la marge de securite restante. "
-                "Si vous me donnez montant, taux et duree, je peux repondre plus concretement."
+                f"Avec un horizon de {self._format_duration(duration_months)}, regardez surtout la mensualité supportable, le coût total du crédit et la marge de sécurité restante. "
+                "Si vous me donnez montant, taux et durée, je peux répondre plus concrètement."
             )
         return (
-            "Avant d'accepter un credit, verifiez mensualite, cout total et marge de securite apres charges fixes. "
-            "Donnez-moi montant, taux et duree si vous voulez une reponse directe."
+            "Avant d'accepter un crédit, vérifiez mensualité, coût total et marge de sécurité après charges fixes. "
+            "Donnez-moi montant, taux et durée si vous voulez une réponse directe."
         )
 
     def _build_retirement_demo_reply(self, context: dict[str, Any]) -> str:
         duration_months = context.get("duration_months")
         if duration_months:
             return (
-                f"Sur {self._format_duration(duration_months)}, utilisez une hypothese de rendement prudente et testez plusieurs scenarios. "
-                "Si vous avez deja un capital et un effort mensuel cible, je peux structurer une reponse plus concrete."
+                f"Sur {self._format_duration(duration_months)}, utilisez une hypothèse de rendement prudente et testez plusieurs scénarios. "
+                "Si vous avez déjà un capital et un effort mensuel cible, je peux structurer une réponse plus concrète."
             )
         return (
-            "Pour un objectif long terme, partez d'un horizon clair, d'un capital de depart, d'un versement regulier et d'une hypothese prudente. "
-            "Donnez-moi votre age cible et votre effort mensuel si vous voulez aller plus loin."
+            "Pour un objectif long terme, partez d'un horizon clair, d'un capital de départ, d'un versement régulier et d'une hypothèse prudente. "
+            "Donnez-moi votre âge cible et votre effort mensuel si vous voulez aller plus loin."
         )
 
     def _build_investment_demo_reply(self, context: dict[str, Any]) -> str:
@@ -576,26 +576,26 @@ class ChatService:
             monthly_part = self._format_amount(monthly_savings_amount)
             if duration_months:
                 return (
-                    f"Avec {self._format_amount(amount)} deja disponibles et {monthly_part} par mois{horizon_part}{risk_part}, vous avez deja une bonne base. "
-                    "Je structurerais cela en 3 poches: une reserve disponible, une poche projets pour ce qui peut arriver dans les 12 a 24 prochains mois, puis une poche investissement diversifiee pour le moyen terme. "
-                    f"Sur les nouveaux versements, vous pouvez garder une petite partie des {monthly_part} pour la tresorerie et investir progressivement le reste pour lisser le risque. "
-                    "Si vous voulez, je peux maintenant vous proposer 3 allocations types et vous dire comment repartir aussi les nouveaux versements mensuels."
+                    f"Avec {self._format_amount(amount)} déjà disponibles et {monthly_part} par mois{horizon_part}{risk_part}, vous avez déjà une bonne base. "
+                    "Je structurerais cela en 3 poches : une réserve disponible, une poche projets pour ce qui peut arriver dans les 12 à 24 prochains mois, puis une poche investissement diversifiée pour le moyen terme. "
+                    f"Sur les nouveaux versements, vous pouvez garder une petite partie des {monthly_part} pour la trésorerie et investir progressivement le reste pour lisser le risque. "
+                    "Si vous voulez, je peux maintenant vous proposer 3 allocations types et vous dire comment répartir aussi les nouveaux versements mensuels."
                 )
             return (
-                f"Avec {self._format_amount(amount)} aujourd'hui et {monthly_part} par mois, je commencerais par separer votre effort en deux: epargne de securite d'un cote, investissement progressif de l'autre. "
+                f"Avec {self._format_amount(amount)} aujourd'hui et {monthly_part} par mois, je commencerais par séparer votre effort en deux : épargne de sécurité d'un côté, investissement progressif de l'autre. "
                 "Conservez d'abord une poche disponible pour les imprévus et les projets proches, puis investissez progressivement une partie fixe chaque mois pour lisser le risque. "
-                "Pour la partie investissement, dites-moi simplement votre horizon et si vous voulez quelque chose de prudent, equilibre ou plus dynamique, et je vous propose une repartition concrete."
+                "Pour la partie investissement, dites-moi simplement votre horizon et si vous voulez quelque chose de prudent, équilibré ou plus dynamique, et je vous propose une répartition concrète."
             )
 
         if duration_months and duration_months <= 24:
             return (
                 f"{amount_part}{horizon_part}{risk_part}, je serais plutot prudent: sur un horizon aussi court, la priorite est la protection du capital et la disponibilite. "
                 "Je n'exposerais pas l'ensemble a des actifs trop volatils. Gardez l'essentiel sur un support court terme ou faible risque, et seulement une petite part plus dynamique si une baisse temporaire reste acceptable. "
-                "Si vous voulez, je peux proposer une repartition prudente, equilibree ou dynamique."
+                "Si vous voulez, je peux proposer une répartition prudente, équilibrée ou dynamique."
             )
         if duration_months and duration_months <= 60:
             return (
-                f"{amount_part}{horizon_part}{risk_part}, une approche equilibree peut se discuter: une base defensive pour stabiliser le capital, puis une poche de croissance mesuree. "
+                f"{amount_part}{horizon_part}{risk_part}, une approche équilibrée peut se discuter : une base défensive pour stabiliser le capital, puis une poche de croissance mesurée. "
                 "Le plus important est de diversifier plutot que tout mettre sur un seul actif. Si vous voulez, je peux proposer 3 allocations types."
             )
         if duration_months and duration_months > 60:
@@ -606,11 +606,11 @@ class ChatService:
         if context.get("is_follow_up") and amount is not None:
             return (
                 f"{amount_part}, je peux deja vous orienter, mais l'horizon de placement change beaucoup la recommandation. "
-                "Sur moins de 2 ans, je serais prudent. Sur 3 a 5 ans, une approche equilibree devient plus defendable. Donnez-moi simplement la duree et votre profil de risque."
+                "Sur moins de 2 ans, je serais prudent. Sur 3 à 5 ans, une approche équilibrée devient plus défendable. Donnez-moi simplement la durée et votre profil de risque."
             )
         return (
-            "Je peux vous orienter utilement sur un investissement, mais il me manque encore trois repères: le montant, la duree visee et votre niveau de prudence face au risque. "
-            "Vous pouvez me le dire naturellement, par exemple: j'ai 25 000 a placer sur 5 ans, profil equilibre."
+            "Je peux vous orienter utilement sur un investissement, mais il me manque encore trois repères : le montant, la durée visée et votre niveau de prudence face au risque. "
+            "Vous pouvez me le dire naturellement, par exemple : j'ai 25 000 à placer sur 5 ans, profil équilibré."
         )
 
     def _build_allocation_plan_reply(self, context: dict[str, Any]) -> str:
@@ -624,7 +624,7 @@ class ChatService:
         if risk_profile == "dynamique":
             recommendation = "Pour votre profil dynamique, l'option 3 est la plus proche de votre demande, mais sur 4 ans je garderais quand meme une vraie base defensive."
         elif risk_profile == "equilibre":
-            recommendation = "Pour votre profil equilibre, l'option 2 est en general le meilleur point de depart."
+            recommendation = "Pour votre profil équilibré, l'option 2 est en général le meilleur point de départ."
         else:
             recommendation = "Pour un profil prudent, l'option 1 est la plus defensive."
 
@@ -637,10 +637,10 @@ class ChatService:
         monthly_extension = ""
         if context.get("monthly_savings_amount") is not None:
             monthly_extension = (
-                f" Si vous versez aussi {self._format_amount(context['monthly_savings_amount'])} par mois, vous pouvez reprendre la meme logique de repartition sur les nouveaux versements."
+                f" Si vous versez aussi {self._format_amount(context['monthly_savings_amount'])} par mois, vous pouvez reprendre la même logique de répartition sur les nouveaux versements."
             )
         return (
-            f"Voici 3 allocations types adaptees a {self._format_duration(context['duration_months'])} pour {self._format_amount(context['amount'])}:\n"
+            f"Voici 3 allocations types adaptées à {self._format_duration(context['duration_months'])} pour {self._format_amount(context['amount'])} :\n"
             + "\n".join(lines)
             + "\n"
             + recommendation
@@ -651,7 +651,7 @@ class ChatService:
     def _build_general_demo_reply(self, context: dict[str, Any]) -> str:
         if context.get("is_greeting_only"):
             return (
-                "Bonjour. Dites-moi simplement ce que vous voulez faire: mieux epargner, investir progressivement, comprendre un credit ou preparer un objectif comme la retraite. "
+                "Bonjour. Dites-moi simplement ce que vous voulez faire : mieux épargner, investir progressivement, comprendre un crédit ou préparer un objectif comme la retraite. "
                 "Vous pouvez parler naturellement, par exemple: j'ai 25 000 aujourd'hui et 200 000 par mois, comment m'organiser ?"
             )
         if context.get("is_follow_up") and context.get("topic"):
@@ -660,8 +660,8 @@ class ChatService:
                 "Donnez-moi votre montant, votre horizon et votre objectif principal."
             )
         return (
-            "Je peux vous aider sur l'epargne, le budget, le credit, la retraite et les bases de l'investissement. "
-            "Pour que ma reponse soit vraiment utile, dites-moi simplement votre objectif, les montants en jeu et votre horizon. Je m'adapte ensuite."
+            "Je peux vous aider sur l'épargne, le budget, le crédit, la retraite et les bases de l'investissement. "
+            "Pour que ma réponse soit vraiment utile, dites-moi simplement votre objectif, les montants en jeu et votre horizon. Je m'adapte ensuite."
         )
 
     def _extract_context(self, payload: ChatRequest) -> dict[str, Any]:
