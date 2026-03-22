@@ -21,6 +21,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
   const messagesEndRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLocalMode, setIsLocalMode] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [language, setLanguage] = useState('fr');
   const [messages, setMessages] = useState([
     {
@@ -86,6 +87,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
       });
 
       setIsLocalMode(reply.source === 'local');
+      setIsDemoMode(reply.source === 'demo');
       setMessages((prev) =>
         appendMessage(prev, {
           id: `assistant-${Date.now()}`,
@@ -96,6 +98,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
       );
     } catch (error) {
       setIsLocalMode(false);
+      setIsDemoMode(false);
       setMessages((prev) =>
         appendMessage(prev, {
           id: `assistant-error-${Date.now()}`,
@@ -172,6 +175,13 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
           <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-50">
             Mode local actif. En environnement local, SIKA utilise un moteur de secours si
             l&apos;API n&apos;est pas joignable.
+          </div>
+        )}
+
+        {isDemoMode && !isLocalMode && (
+          <div className="mt-4 rounded-2xl border border-gold-300/20 bg-gold-300/10 px-4 py-3 text-sm text-amber-50">
+            Mode gratuit actif. SIKA répond ici avec un moteur pédagogique intégré, sans
+            OpenAI, tout en conservant les calculateurs et les données marché du site.
           </div>
         )}
       </header>

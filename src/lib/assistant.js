@@ -81,7 +81,7 @@ export async function requestAssistantReply({
 
     return {
       answer: payload.answer,
-      source: 'api',
+      source: payload.source || 'api',
     };
   } catch (error) {
     if (allowLocalFallback && (error.name === 'AbortError' || isNetworkLikeError(error))) {
@@ -146,7 +146,11 @@ export function buildLocalAssistantReply({ message, language, history = [] }) {
 }
 
 function buildSavingsReply(context) {
-  if (context.wantsSavingsPlan) {
+  if (
+    context.wantsSavingsPlan ||
+    (context.isAffirmativeFollowUp &&
+      (context.monthlySavingsAmount != null || context.amount != null))
+  ) {
     return buildSavingsPlanReply(context);
   }
 
@@ -230,13 +234,37 @@ function buildRetirementReply(context) {
 }
 
 function buildInvestmentReply(context) {
-  if (context.wantsAllocationPlan && context.amount && context.durationMonths) {
+  if (
+    (context.wantsAllocationPlan || context.isAffirmativeFollowUp) &&
+    context.amount &&
+    context.durationMonths
+  ) {
     return buildAllocationPlans(context);
   }
 
   const amountPart = context.amount ? `Avec ${formatAmount(context.amount)}` : 'Avec ce capital';
+  const monthlyPart = context.monthlySavingsAmount
+    ? formatAmount(context.monthlySavingsAmount)
+    : null;
   const horizonPart = context.durationMonths ? ` sur ${formatDuration(context.durationMonths)}` : '';
   const riskPart = context.riskProfile ? `, dans un profil ${context.riskProfile}` : '';
+
+  if (context.amount && context.monthlySavingsAmount) {
+    if (context.durationMonths) {
+      return (
+        `Avec ${formatAmount(context.amount)} déjà disponibles et ${monthlyPart} par mois${horizonPart}${riskPart}, je structurerais en 3 poches. ` +
+        "D'abord une réserve de sécurité vraiment disponible, ensuite une poche projets pour les besoins des 12 à 24 prochains mois, puis une poche investissement diversifiée pour le reste. " +
+        `En pratique, vous pouvez garder une petite partie des ${monthlyPart} pour la trésorerie et investir progressivement le solde sur un portefeuille diversifié. ` +
+        "Si vous voulez, je peux maintenant vous proposer 3 allocations types et vous dire comment répartir aussi les nouveaux versements mensuels."
+      );
+    }
+
+    return (
+      `Avec ${formatAmount(context.amount)} aujourd'hui et ${monthlyPart} par mois, je commencerais par séparer votre effort en deux : épargne de sécurité d'un côté, investissement progressif de l'autre. ` +
+      "Conservez d'abord une poche disponible pour les imprévus et les projets proches, puis investissez progressivement une partie fixe chaque mois pour lisser le risque. " +
+      "Pour la partie investissement, donnez-moi simplement votre horizon et votre profil de risque, et je vous propose une répartition concrète."
+    );
+  }
 
   if (context.durationMonths && context.durationMonths <= 24) {
     return (
@@ -297,11 +325,14 @@ function buildAllocationPlans(context) {
   const targetRate = context.annualRate
     ? ` Si votre objectif implicite est proche de ${context.annualRate} % par an, l'option 2 ou 3 peut se discuter sans garantie de résultat.`
     : '';
+  const monthlyExtension = context.monthlySavingsAmount
+    ? ` Si vous versez aussi ${formatAmount(context.monthlySavingsAmount)} par mois, vous pouvez reprendre la même logique de répartition sur les nouveaux versements.`
+    : '';
 
   return (
     `Voici 3 allocations types adaptées à ${formatDuration(context.durationMonths)} pour ${formatAmount(context.amount)} :\n` +
     `${lines.join('\n')}\n` +
-    `${recommendation}${targetRate}`
+    `${recommendation}${targetRate}${monthlyExtension}`
   );
 }
 
@@ -324,9 +355,16 @@ function extractConversationContext(history, message) {
     ...history.filter((item) => item.role === 'user').map((item) => item.content),
     message,
   ];
+  const assistantMessages = history
+    .filter((item) => item.role === 'assistant')
+    .map((item) => item.content);
   const currentNormalized = normalizeForMatch(message);
+  const assistantNormalized = assistantMessages
+    .map((item) => normalizeForMatch(item))
+    .join(' || ');
   const wantsAllocationPlan = isAllocationRequest(currentNormalized);
   const wantsSavingsPlan = isSavingsPlanRequest(currentNormalized);
+  const isAffirmativeFollowUp = isAffirmativeFollowUpMessage(currentNormalized);
   const amount = findLatestAmount(userMessages);
   const monthlySavingsAmount = findLatestMonthlyAmount(userMessages);
   const durationMonths = findLatestDurationMonths(userMessages);
@@ -342,6 +380,29 @@ function extractConversationContext(history, message) {
     topic = 'savings';
   }
 
+  if (!topic && isAffirmativeFollowUp) {
+    if (
+      matchesAny(assistantNormalized, [
+        'allocation',
+        'allocations',
+        'repartition',
+        'portefeuille',
+        'profil',
+      ])
+    ) {
+      topic = 'investment';
+    } else if (
+      matchesAny(assistantNormalized, [
+        'plan simple',
+        'epargne',
+        'reserve de securite',
+        'revenu mensuel',
+      ])
+    ) {
+      topic = 'savings';
+    }
+  }
+
   return {
     currentMessage: message,
     topic,
@@ -351,6 +412,7 @@ function extractConversationContext(history, message) {
     annualRate,
     riskProfile,
     isFollowUp: isAdviceFollowUp(currentNormalized),
+    isAffirmativeFollowUp,
     wantsAllocationPlan,
     wantsSavingsPlan,
   };
@@ -499,6 +561,23 @@ function isAdviceFollowUp(normalizedMessage) {
     'tu ferais quoi',
     'que me proposes',
     'quelle option',
+  ]);
+}
+
+function isAffirmativeFollowUpMessage(normalizedMessage) {
+  return matchesAny(normalizedMessage, [
+    "d'accord",
+    'ok',
+    'okay',
+    'oui',
+    'vas-y',
+    'vas y',
+    'allons-y',
+    'allons y',
+    'je veux bien',
+    'ca marche',
+    'tres bien',
+    'parfait',
   ]);
 }
 

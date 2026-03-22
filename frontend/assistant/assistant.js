@@ -80,12 +80,18 @@ formEl.addEventListener('submit', async function (event) {
     }
 
     addMessage('assistant', payload.answer);
+    if (payload.source === 'demo') {
+      setStatus("Mode gratuit actif. Cette page répond sans OpenAI avec le moteur pédagogique de SIKA.");
+    } else {
+      setStatus('');
+    }
   } catch (error) {
     if (ALLOW_LOCAL_FALLBACK && (error.name === 'AbortError' || isNetworkLikeError(error))) {
       addMessage(
         'assistant',
         buildLocalAssistantReply(message, languageEl.value, state.history.slice(-MAX_CONTEXT_MESSAGES))
       );
+      setStatus("Mode local actif. Cette page utilise un moteur de secours en environnement local.");
     } else {
       if (error.name === 'AbortError') {
         addMessage('assistant', "L'assistant SIKA a mis trop de temps a repondre. Merci de reessayer.");
@@ -97,7 +103,9 @@ formEl.addEventListener('submit', async function (event) {
     }
   } finally {
     window.clearTimeout(timeoutId);
-    setStatus('');
+    if (statusEl.textContent === 'SIKA réfléchit...' || statusEl.textContent === 'SIKA reflechit...') {
+      setStatus('');
+    }
   }
 });
 

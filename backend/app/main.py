@@ -106,7 +106,8 @@ async def health() -> dict[str, str]:
 
 @app.get("/readiness")
 async def readiness() -> dict[str, object]:
-    chat_ready = bool(settings.openai_api_key) and not settings.demo_mode
+    chat_mode = "demo" if settings.demo_mode else "openai" if settings.openai_api_key else "unavailable"
+    chat_ready = chat_mode in {"demo", "openai"}
     finance_ready = (
         settings.market_data_provider != "demo"
         and (
@@ -121,7 +122,7 @@ async def readiness() -> dict[str, object]:
     warnings: list[str] = []
     if settings.demo_mode:
         warnings.append("demo_mode_active")
-    if not settings.openai_api_key:
+    if not settings.demo_mode and not settings.openai_api_key:
         warnings.append("openai_api_key_missing")
     if settings.market_data_provider == "demo":
         warnings.append("finance_provider_demo")
@@ -134,6 +135,7 @@ async def readiness() -> dict[str, object]:
         "environment": settings.environment,
         "checks": {
             "chat_ready": chat_ready,
+            "chat_mode": chat_mode,
             "finance_ready": finance_ready,
             "trusted_hosts_ready": trusted_hosts_ready,
             "cors_ready": cors_ready,
