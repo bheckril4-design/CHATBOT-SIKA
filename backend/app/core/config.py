@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
     openai_api_key: str | None = None
     openai_model: str = "gpt-5.2"
-    openai_reasoning_effort: str = "none"
+    openai_reasoning_effort: str = "medium"
     openai_text_verbosity: str = "medium"
     openai_temperature: float | None = 0.2
     max_history_messages: int = 16

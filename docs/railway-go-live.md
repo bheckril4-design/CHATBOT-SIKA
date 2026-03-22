@@ -35,7 +35,7 @@ ENVIRONMENT=production
 DEMO_MODE=false
 PORT=8000
 ALLOWED_ORIGINS=https://sika.oceanicconseils.com,https://www.sika.oceanicconseils.com
-TRUSTED_HOSTS=sika-api.oceanicconseils.com,*.up.railway.app
+TRUSTED_HOSTS=sika-api.oceanicconseils.com,*.up.railway.app,healthcheck.railway.app
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.2
 OPENAI_REASONING_EFFORT=none
@@ -54,6 +54,9 @@ Important :
 - Railway injecte normalement une variable `PORT` pour ses healthchecks ;
 - comme le domaine public a ete cree avec un target port `8000`, definir `PORT=8000`
   evite les desalignements entre le port ecoute par l'app, le healthcheck et le domaine public.
+- Railway utilise aussi le hostname `healthcheck.railway.app` pour ses healthchecks ;
+  si tu utilises `TrustedHostMiddleware`, ajoute ce host a `TRUSTED_HOSTS` sinon le deploiement
+  peut echouer meme si l'application demarre correctement.
 
 ## Domaine personnalise
 

@@ -170,8 +170,8 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
 
         {isLocalMode && (
           <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-50">
-            Mode local actif. Les r&eacute;ponses restent utilisables, mais l&apos;API SIKA
-            doit encore &ecirc;tre v&eacute;rifi&eacute;e avant red&eacute;ploiement.
+            Mode local actif. En environnement local, SIKA utilise un moteur de secours si
+            l&apos;API n&apos;est pas joignable.
           </div>
         )}
       </header>

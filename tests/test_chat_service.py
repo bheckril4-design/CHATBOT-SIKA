@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.core.config import Settings
 from app.schemas import ChatRequest
-from app.services.chat_service import ChatService
+from app.services.chat_service import ChatService, OpenAIError
 
 
 def normalize_text(value: str) -> str:
@@ -24,6 +24,18 @@ def test_chat_service_requires_openai_when_demo_disabled() -> None:
         asyncio.run(service.answer(ChatRequest(message="Bonjour", language="fr")))
 
     assert exc_info.value.status_code == 503
+
+
+def test_chat_service_extracts_openai_error_message_from_body() -> None:
+    service = ChatService(Settings(demo_mode=False, openai_api_key="test-key"))
+
+    class FakeOpenAIError(OpenAIError):
+        def __init__(self) -> None:
+            self.body = {"error": {"message": "The model `gpt-5.2` does not exist or you do not have access to it."}}
+
+    message = service._extract_openai_error_message(FakeOpenAIError())
+
+    assert "gpt-5.2" in message
 
 
 def test_chat_service_demo_mode_returns_safe_message() -> None:
@@ -137,3 +149,37 @@ def test_chat_service_builds_older_gpt5_request_without_temperature_when_needed(
     assert request["reasoning"]["effort"] == "minimal"
     assert request["text"]["verbosity"] == "medium"
     assert "temperature" not in request
+
+
+def test_chat_service_resolves_compound_savings_tool_request_from_investment_prompt() -> None:
+    service = ChatService(Settings(demo_mode=False, openai_api_key="test-key"))
+    payload = ChatRequest(
+        message="J'ai 40000 a investir sur 4 ans a un taux de 5 %",
+        language="fr",
+    )
+
+    context = service._extract_context(payload)
+    calculation_request = service._resolve_calculation_request(context)
+
+    assert calculation_request is not None
+    assert calculation_request.type == "compound-savings"
+    assert calculation_request.principal == 40000
+    assert calculation_request.duration_months == 48
+    assert calculation_request.annual_rate == 5
+
+
+def test_chat_service_resolves_market_request_for_xof_eur() -> None:
+    service = ChatService(Settings(demo_mode=False, openai_api_key="test-key"))
+    payload = ChatRequest(
+        message="Quel est le taux XOF/EUR aujourd'hui ?",
+        language="fr",
+    )
+
+    context = service._extract_context(payload)
+    market_request = service._resolve_market_request(context)
+
+    assert market_request is not None
+    assert market_request["symbol"] == "XOF/EUR"
+    assert market_request["asset_type"] == "forex"
+    assert market_request["base_currency"] == "XOF"
+    assert market_request["quote_currency"] == "EUR"

@@ -38,6 +38,8 @@ export async function requestAssistantReply({
   history,
   signal,
 }) {
+  const allowLocalFallback = shouldAllowLocalFallback(apiBase);
+
   try {
     const response = await fetch(`${apiBase.replace(/\/$/, '')}/chat`, {
       method: 'POST',
@@ -56,7 +58,7 @@ export async function requestAssistantReply({
     const payload = await safeParseJson(response);
 
     if (!response.ok) {
-      if (response.status >= 500) {
+      if (allowLocalFallback && response.status >= 500) {
         return {
           answer: buildLocalAssistantReply({ message, language, history }),
           source: 'local',
@@ -67,6 +69,10 @@ export async function requestAssistantReply({
     }
 
     if (!payload?.answer) {
+      if (!allowLocalFallback) {
+        throw new Error("L'API SIKA a renvoyé une réponse vide.");
+      }
+
       return {
         answer: buildLocalAssistantReply({ message, language, history }),
         source: 'local',
@@ -78,15 +84,36 @@ export async function requestAssistantReply({
       source: 'api',
     };
   } catch (error) {
-    if (error.name === 'AbortError' || isNetworkLikeError(error)) {
+    if (allowLocalFallback && (error.name === 'AbortError' || isNetworkLikeError(error))) {
       return {
         answer: buildLocalAssistantReply({ message, language, history }),
         source: 'local',
       };
     }
 
+    if (error.name === 'AbortError') {
+      throw new Error("L'assistant SIKA a mis trop de temps à répondre. Réessayez dans quelques instants.");
+    }
+
+    if (isNetworkLikeError(error)) {
+      throw new Error("Impossible de joindre l'API SIKA pour le moment. Réessayez dans quelques instants.");
+    }
+
     throw error;
   }
+}
+
+function shouldAllowLocalFallback(apiBase) {
+  const normalizedApiBase = String(apiBase || '');
+  const runningLocally =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  return (
+    import.meta.env.DEV ||
+    runningLocally ||
+    /localhost|127\.0\.0\.1/.test(normalizedApiBase)
+  );
 }
 
 export function buildLocalAssistantReply({ message, language, history = [] }) {

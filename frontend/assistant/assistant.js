@@ -3,6 +3,10 @@ const STORAGE_KEY = 'sika_assistant_user_id';
 const REQUEST_TIMEOUT_MS = 15000;
 const MAX_HISTORY_MESSAGES = 50;
 const MAX_CONTEXT_MESSAGES = 16;
+const ALLOW_LOCAL_FALLBACK =
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
+  /localhost|127\.0\.0\.1/.test(API_BASE);
 const NUMBER_FORMATTER = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 0,
 });
@@ -58,7 +62,7 @@ formEl.addEventListener('submit', async function (event) {
     const payload = await safeParseJson(response);
 
     if (!response.ok) {
-      if (response.status >= 500) {
+      if (ALLOW_LOCAL_FALLBACK && response.status >= 500) {
         addMessage('assistant', buildLocalAssistantReply(message, languageEl.value, recentHistory));
         return;
       }
@@ -66,18 +70,30 @@ formEl.addEventListener('submit', async function (event) {
       throw new Error(extractApiError(payload) || `Erreur API ${response.status}`);
     }
 
-    addMessage(
-      'assistant',
-      payload?.answer || buildLocalAssistantReply(message, languageEl.value, recentHistory)
-    );
+    if (!payload?.answer) {
+      if (ALLOW_LOCAL_FALLBACK) {
+        addMessage('assistant', buildLocalAssistantReply(message, languageEl.value, recentHistory));
+        return;
+      }
+
+      throw new Error("L'API SIKA a renvoye une reponse vide.");
+    }
+
+    addMessage('assistant', payload.answer);
   } catch (error) {
-    if (error.name === 'AbortError' || isNetworkLikeError(error)) {
+    if (ALLOW_LOCAL_FALLBACK && (error.name === 'AbortError' || isNetworkLikeError(error))) {
       addMessage(
         'assistant',
         buildLocalAssistantReply(message, languageEl.value, state.history.slice(-MAX_CONTEXT_MESSAGES))
       );
     } else {
-      addMessage('assistant', error.message || "Une erreur s'est produite.");
+      if (error.name === 'AbortError') {
+        addMessage('assistant', "L'assistant SIKA a mis trop de temps a repondre. Merci de reessayer.");
+      } else if (isNetworkLikeError(error)) {
+        addMessage('assistant', "Impossible de joindre l'API SIKA pour le moment. Merci de reessayer dans quelques instants.");
+      } else {
+        addMessage('assistant', error.message || "Une erreur s'est produite.");
+      }
     }
   } finally {
     window.clearTimeout(timeoutId);
