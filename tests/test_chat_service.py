@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.core.config import Settings
-from app.schemas import ChatRequest
+from app.schemas import ChatRequest, MarketDataResponse
 from app.services.chat_service import ChatService, OpenAIError
 
 
@@ -64,6 +64,18 @@ def test_chat_service_demo_mode_returns_safe_message() -> None:
 
     assert result.source == "demo"
     assert "epargne" in normalize_text(result.answer)
+
+
+def test_chat_service_demo_mode_handles_simple_greeting_naturally() -> None:
+    service = ChatService(Settings(demo_mode=True, openai_api_key=None))
+
+    result = asyncio.run(service.answer(ChatRequest(message="bonjour", language="fr")))
+
+    normalized = normalize_text(result.answer)
+
+    assert result.source == "demo"
+    assert "bonjour" in normalized
+    assert "investir" in normalized or "epargner" in normalized
 
 
 def test_chat_service_demo_mode_uses_recent_context_for_follow_up() -> None:
@@ -171,7 +183,36 @@ def test_chat_service_demo_mode_handles_capital_and_monthly_savings_for_investin
     assert result.source == "demo"
     assert "25 000" in result.answer
     assert "200 000" in result.answer
-    assert "horizon" in normalized or "profil de risque" in normalized
+    assert "bonne base" in normalized or "repartition" in normalized or "investissement" in normalized
+
+
+def test_chat_service_demo_mode_uses_market_data_when_user_asks_for_price(monkeypatch) -> None:
+    service = ChatService(Settings(demo_mode=True, openai_api_key=None))
+
+    async def fake_get_market_data(**kwargs):
+        return MarketDataResponse(
+            provider="twelve-data",
+            asset_type="crypto",
+            symbol="BTC/USD",
+            price=68804.87,
+            currency="USD",
+            change_percent=-0.155,
+            last_updated="2026-03-22T17:03:39+00:00",
+            notes="Coinbase Pro",
+        )
+
+    monkeypatch.setattr(service.finance_service, "get_market_data", fake_get_market_data)
+
+    result = asyncio.run(
+        service.answer(ChatRequest(message="Quel est le prix du BTC maintenant ?", language="fr"))
+    )
+
+    normalized = normalize_text(result.answer)
+
+    assert result.source == "demo"
+    assert "btc/usd" in normalized
+    assert "68 804" in result.answer or "68 805" in result.answer
+    assert "twelve-data" in normalized
 
 
 def test_chat_service_builds_gpt52_request_with_reasoning_and_temperature() -> None:

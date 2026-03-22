@@ -26,7 +26,7 @@ class FinanceService:
         base_currency = base_currency.upper()
         quote_currency = quote_currency.upper()
 
-        if self.settings.demo_mode or self.settings.market_data_provider == "demo":
+        if self.settings.market_data_provider == "demo":
             return self._demo(symbol, asset_type, quote_currency)
 
         if asset_type == "forex":

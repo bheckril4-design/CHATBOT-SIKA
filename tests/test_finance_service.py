@@ -52,6 +52,42 @@ def test_finance_service_uses_alpha_vantage_for_stock_when_provider_selected(mon
     assert calls == {"alpha": 1, "twelve": 0}
 
 
+def test_finance_service_keeps_real_provider_when_chat_demo_mode_is_enabled(monkeypatch) -> None:
+    service = FinanceService(
+        Settings(
+            demo_mode=True,
+            market_data_provider="twelve-data",
+            twelve_data_api_key="td-key",
+        )
+    )
+
+    async def fake_twelve(self, symbol, asset_type):
+        return MarketDataResponse(
+            provider="twelve-data",
+            asset_type=asset_type,
+            symbol=symbol,
+            price=68804.87,
+            currency="USD",
+            change_percent=-0.15,
+            last_updated="2026-03-22T17:03:39+00:00",
+            notes="Coinbase Pro",
+        )
+
+    monkeypatch.setattr(FinanceService, "_twelve_data", fake_twelve)
+
+    result = asyncio.run(
+        service.get_market_data(
+            symbol="BTC/USD",
+            asset_type="crypto",
+            base_currency="BTC",
+            quote_currency="USD",
+        )
+    )
+
+    assert result.provider == "twelve-data"
+    assert result.symbol == "BTC/USD"
+
+
 def test_finance_service_falls_back_to_alpha_vantage_when_twelve_data_fails(monkeypatch) -> None:
     service = FinanceService(
         Settings(

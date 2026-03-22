@@ -80,7 +80,12 @@ class ChatService:
         context = self._extract_context(payload)
 
         if self.settings.demo_mode:
-            return ChatResponse(answer=self._demo_answer(context, language), language=language, source="demo", user_id=user_id)
+            return ChatResponse(
+                answer=await self._demo_answer(context, language),
+                language=language,
+                source="demo",
+                user_id=user_id,
+            )
 
         if not self.client:
             if self.settings.openai_api_key and AsyncOpenAI is None:
@@ -245,6 +250,28 @@ class ChatService:
             return ""
         return "Resume interne du contexte recent. Utilise-le pour eviter une reponse generique:\n" + "\n".join(lines)
 
+    async def _collect_tool_results(
+        self,
+        context: dict[str, Any],
+    ) -> tuple[CalculationRequest | None, CalculationResponse | None, MarketDataResponse | None]:
+        calculation_request = self._resolve_calculation_request(context)
+        calculation_response: CalculationResponse | None = None
+        if calculation_request is not None:
+            try:
+                calculation_response = run_calculation(calculation_request)
+            except HTTPException:
+                calculation_response = None
+
+        market_request = self._resolve_market_request(context)
+        market_response: MarketDataResponse | None = None
+        if market_request is not None:
+            try:
+                market_response = await self.finance_service.get_market_data(**market_request)
+            except HTTPException:
+                market_response = None
+
+        return calculation_request, calculation_response, market_response
+
     def _resolve_calculation_request(self, context: dict[str, Any]) -> CalculationRequest | None:
         topic = context.get("topic")
         amount = context.get("amount")
@@ -344,18 +371,118 @@ class ChatService:
             return str(value)
         return self._format_amount(value) if abs(value) >= 1000 else f"{value:.2f}"
 
-    def _demo_answer(self, context: dict[str, Any], language: str) -> str:
+    async def _demo_answer(self, context: dict[str, Any], language: str) -> str:
         if language in {"fon", "mina"}:
             return "Je peux deja donner une orientation simple ici. Si vous voulez une reponse plus riche, reformulez aussi en francais."
+        calculation_request, calculation_response, market_response = await self._collect_tool_results(context)
+
+        if market_response is not None and context.get("wants_market_data"):
+            return self._build_market_demo_reply(market_response)
+
         if context["topic"] == "investment":
-            return self._build_investment_demo_reply(context)
-        if context["topic"] == "credit":
-            return self._build_credit_demo_reply(context)
-        if context["topic"] == "retirement":
-            return self._build_retirement_demo_reply(context)
-        if context["topic"] == "savings":
-            return self._build_savings_demo_reply(context)
-        return self._build_general_demo_reply(context)
+            base_reply = self._build_investment_demo_reply(context)
+        elif context["topic"] == "credit":
+            base_reply = self._build_credit_demo_reply(context)
+        elif context["topic"] == "retirement":
+            base_reply = self._build_retirement_demo_reply(context)
+        elif context["topic"] == "savings":
+            base_reply = self._build_savings_demo_reply(context)
+        else:
+            base_reply = self._build_general_demo_reply(context)
+
+        insights: list[str] = []
+        calculation_insight = self._build_demo_calculation_insight(context, calculation_request, calculation_response)
+        if calculation_insight:
+            insights.append(calculation_insight)
+
+        market_insight = self._build_demo_market_insight(context, market_response)
+        if market_insight:
+            insights.append(market_insight)
+
+        if not insights:
+            return base_reply
+
+        return base_reply + "\n\n" + "\n\n".join(insights)
+
+    def _build_market_demo_reply(self, response: MarketDataResponse) -> str:
+        change_part = ""
+        if response.change_percent is not None:
+            change_part = f", soit {response.change_percent:+.2f} %"
+
+        note_part = f" Source: {response.provider}." if response.provider != "demo" else " Valeur indicative de demonstration."
+        return (
+            f"Le dernier niveau disponible pour {response.symbol} ressort autour de {response.price:,.6f} {response.currency}".replace(",", " ")
+            + change_part
+            + ". "
+            + (response.notes or "Taux spot recupere a la demande.")
+            + note_part
+        )
+
+    def _build_demo_market_insight(
+        self,
+        context: dict[str, Any],
+        response: MarketDataResponse | None,
+    ) -> str:
+        if response is None or context.get("topic") not in {"investment", "savings"}:
+            return ""
+
+        if response.asset_type == "forex":
+            return (
+                f"Repere marche: {response.symbol} vaut environ {response.price:,.6f} {response.currency}.".replace(",", " ")
+                + " Utile si vous comparez un objectif local a une reference en devise."
+            )
+
+        if response.asset_type in {"crypto", "stock"}:
+            change_part = ""
+            if response.change_percent is not None:
+                change_part = f" sur la derniere variation observee ({response.change_percent:+.2f} %)"
+            return (
+                f"Repere marche: {response.symbol} cote autour de {response.price:,.2f} {response.currency}".replace(",", " ")
+                + change_part
+                + ". Cela sert de point de reference, pas de promesse de rendement."
+            )
+
+        return ""
+
+    def _build_demo_calculation_insight(
+        self,
+        context: dict[str, Any],
+        request: CalculationRequest | None,
+        response: CalculationResponse | None,
+    ) -> str:
+        if request is None or response is None:
+            return ""
+
+        if response.type == "compound-savings":
+            real_future_value = response.breakdown.get("real_future_value")
+            taxes_due = response.breakdown.get("taxes_due")
+            base = (
+                f"Projection SIKA: avec ces hypotheses, le capital net projete ressort autour de {self._format_amount(response.result)} {response.currency or 'XOF'}."
+            )
+            if isinstance(real_future_value, (int, float)):
+                base += f" En valeur reelle apres inflation, cela correspond a environ {self._format_amount(float(real_future_value))} {response.currency or 'XOF'}."
+            if isinstance(taxes_due, (int, float)) and taxes_due > 0:
+                base += f" Les impots estimes sur les gains representent environ {self._format_amount(float(taxes_due))} {response.currency or 'XOF'}."
+            return base
+
+        if response.type == "loan-payment":
+            total_monthly_payment = response.breakdown.get("total_monthly_payment")
+            total_payment = response.breakdown.get("total_payment")
+            if not isinstance(total_monthly_payment, (int, float)):
+                return ""
+            message = (
+                f"Simulation SIKA: la mensualite totale estimee ressort autour de {self._format_amount(float(total_monthly_payment))} {response.currency or 'XOF'}."
+            )
+            if isinstance(total_payment, (int, float)):
+                message += f" Le cout total estime du credit atteint environ {self._format_amount(float(total_payment))} {response.currency or 'XOF'}."
+            return message
+
+        if response.type == "simple-interest":
+            return (
+                f"Projection SIKA: le montant final net ressort autour de {self._format_amount(response.result)} {response.currency or 'XOF'}."
+            )
+
+        return ""
 
     def _build_savings_demo_reply(self, context: dict[str, Any]) -> str:
         if context.get("wants_savings_plan") or (
@@ -365,21 +492,25 @@ class ChatService:
             return self._build_savings_plan_reply(context)
         monthly_savings_amount = context.get("monthly_savings_amount")
         if monthly_savings_amount is not None:
+            reserve_share = round(monthly_savings_amount * 0.4)
+            project_share = round(monthly_savings_amount * 0.3)
             return (
-                f"Si vous pouvez epargner {self._format_amount(monthly_savings_amount)} par mois, le plus utile est de separer reserve de securite et argent de projet. "
-                "Commencez par mettre quelques mois de depenses de cote, puis automatisez un versement regulier. "
-                "Si vous voulez, je peux proposer un plan simple en 3 etapes a partir de ce montant mensuel."
+                f"Avec {self._format_amount(monthly_savings_amount)} par mois, vous pouvez deja construire quelque chose de solide. "
+                f"Je commencerais par mettre environ {self._format_amount(reserve_share)} de cote pour la reserve de securite et {self._format_amount(project_share)} pour vos projets a court ou moyen terme. "
+                "Le reste peut servir a prendre doucement l'habitude d'investir de facon reguliere. "
+                "Si vous voulez, je peux maintenant vous transformer ca en plan simple en 3 etapes."
             )
         amount = context.get("amount")
         if amount is not None:
             return (
-                f"Si vous partez avec {self._format_amount(amount)}, le plus utile est de separer reserve de securite et argent de projet. "
-                "Commencez par mettre quelques mois de depenses de cote, puis automatisez un versement regulier. "
-                "Si vous voulez, donnez-moi votre revenu mensuel et vos charges fixes."
+                f"Avec {self._format_amount(amount)} au depart, je ne chercherais pas tout de suite la performance. "
+                "Je commencerais par proteger une partie en reserve disponible, puis j'installerais une epargne mensuelle simple et reguliere. "
+                "Si vous voulez, donnez-moi votre revenu mensuel et je vous propose une repartition concrete."
             )
         return (
-            "Pour epargner efficacement, commencez par un montant automatique realiste, puis construisez une reserve de securite avant de chercher du rendement. "
-            "Donnez-moi votre revenu mensuel et vos charges fixes si vous voulez une methode concrete."
+            "Pour bien demarrer, il n'est pas necessaire de viser gros tout de suite. "
+            "Le plus utile est de mettre en place une epargne automatique realiste, de construire une reserve de securite, puis d'augmenter progressivement l'effort quand le budget le permet. "
+            "Si vous me donnez votre revenu mensuel, je peux vous proposer une methode simple et concrete."
         )
 
     def _build_savings_plan_reply(self, context: dict[str, Any]) -> str:
@@ -445,15 +576,15 @@ class ChatService:
             monthly_part = self._format_amount(monthly_savings_amount)
             if duration_months:
                 return (
-                    f"Avec {self._format_amount(amount)} deja disponibles et {monthly_part} par mois{horizon_part}{risk_part}, je structurerais en 3 poches. "
-                    "D'abord une reserve de securite vraiment disponible, ensuite une poche projets pour les besoins des 12 a 24 prochains mois, puis une poche investissement diversifiee pour le reste. "
-                    f"En pratique, vous pouvez garder une petite partie des {monthly_part} pour la tresorerie et investir progressivement le solde sur un portefeuille diversifie. "
+                    f"Avec {self._format_amount(amount)} deja disponibles et {monthly_part} par mois{horizon_part}{risk_part}, vous avez deja une bonne base. "
+                    "Je structurerais cela en 3 poches: une reserve disponible, une poche projets pour ce qui peut arriver dans les 12 a 24 prochains mois, puis une poche investissement diversifiee pour le moyen terme. "
+                    f"Sur les nouveaux versements, vous pouvez garder une petite partie des {monthly_part} pour la tresorerie et investir progressivement le reste pour lisser le risque. "
                     "Si vous voulez, je peux maintenant vous proposer 3 allocations types et vous dire comment repartir aussi les nouveaux versements mensuels."
                 )
             return (
                 f"Avec {self._format_amount(amount)} aujourd'hui et {monthly_part} par mois, je commencerais par separer votre effort en deux: epargne de securite d'un cote, investissement progressif de l'autre. "
                 "Conservez d'abord une poche disponible pour les imprévus et les projets proches, puis investissez progressivement une partie fixe chaque mois pour lisser le risque. "
-                "Pour la partie investissement, donnez-moi simplement votre horizon et votre profil de risque, et je vous propose une repartition concrete."
+                "Pour la partie investissement, dites-moi simplement votre horizon et si vous voulez quelque chose de prudent, equilibre ou plus dynamique, et je vous propose une repartition concrete."
             )
 
         if duration_months and duration_months <= 24:
@@ -478,8 +609,8 @@ class ChatService:
                 "Sur moins de 2 ans, je serais prudent. Sur 3 a 5 ans, une approche equilibree devient plus defendable. Donnez-moi simplement la duree et votre profil de risque."
             )
         return (
-            "Pour vous conseiller utilement sur un investissement, j'ai surtout besoin de trois infos: montant, horizon et tolerance au risque. "
-            "Repondez juste sous la forme: montant / duree / prudent-equilibre-dynamique."
+            "Je peux vous orienter utilement sur un investissement, mais il me manque encore trois repères: le montant, la duree visee et votre niveau de prudence face au risque. "
+            "Vous pouvez me le dire naturellement, par exemple: j'ai 25 000 a placer sur 5 ans, profil equilibre."
         )
 
     def _build_allocation_plan_reply(self, context: dict[str, Any]) -> str:
@@ -518,14 +649,19 @@ class ChatService:
         )
 
     def _build_general_demo_reply(self, context: dict[str, Any]) -> str:
+        if context.get("is_greeting_only"):
+            return (
+                "Bonjour. Dites-moi simplement ce que vous voulez faire: mieux epargner, investir progressivement, comprendre un credit ou preparer un objectif comme la retraite. "
+                "Vous pouvez parler naturellement, par exemple: j'ai 25 000 aujourd'hui et 200 000 par mois, comment m'organiser ?"
+            )
         if context.get("is_follow_up") and context.get("topic"):
             return (
                 "Je peux aller plus loin, mais j'ai besoin d'un detail concret pour sortir du generique. "
                 "Donnez-moi votre montant, votre horizon et votre objectif principal."
             )
         return (
-            "Je peux aider sur l'epargne, le budget, le credit, la retraite et les bases de l'investissement. "
-            "Pour une reponse vraiment utile, donnez-moi votre objectif, le montant concerne, votre horizon et votre tolerance au risque."
+            "Je peux vous aider sur l'epargne, le budget, le credit, la retraite et les bases de l'investissement. "
+            "Pour que ma reponse soit vraiment utile, dites-moi simplement votre objectif, les montants en jeu et votre horizon. Je m'adapte ensuite."
         )
 
     def _extract_context(self, payload: ChatRequest) -> dict[str, Any]:
@@ -539,6 +675,7 @@ class ChatService:
         wants_allocation_plan = self._is_allocation_request(current_normalized)
         wants_savings_plan = self._is_savings_plan_request(current_normalized)
         is_affirmative_follow_up = self._is_affirmative_follow_up(current_normalized)
+        is_greeting_only = self._is_greeting_only(current_normalized)
         amount = self._find_latest_amount(user_messages)
         monthly_savings_amount = self._find_latest_monthly_amount(user_messages)
         duration_months = self._find_latest_duration_months(user_messages)
@@ -571,8 +708,10 @@ class ChatService:
             "risk_profile": risk_profile,
             "is_follow_up": self._is_advice_follow_up(current_normalized),
             "is_affirmative_follow_up": is_affirmative_follow_up,
+            "is_greeting_only": is_greeting_only,
             "wants_allocation_plan": wants_allocation_plan,
             "wants_savings_plan": wants_savings_plan,
+            "wants_market_data": self._looks_like_market_question(current_normalized),
             "current_normalized": current_normalized,
             "combined_normalized": combined_normalized,
             "combined_text": combined_text,
@@ -706,6 +845,10 @@ class ChatService:
             ],
         )
 
+    def _is_greeting_only(self, normalized_message: str) -> bool:
+        stripped = normalized_message.strip()
+        return stripped in {"bonjour", "bonsoir", "salut", "hello", "bjr", "coucou"}
+
     def _is_allocation_request(self, normalized_message: str) -> bool:
         return self._matches_any(normalized_message, ["allocation", "allocations", "repartition", "repartitions", "portefeuille type", "portefeuilles types", "3 allocations", "trois allocations", "3 options", "trois options"])
 
@@ -736,6 +879,28 @@ class ChatService:
                 return {"symbol": "USD/EUR", "asset_type": "forex", "base_currency": "USD", "quote_currency": "EUR"}
             return {"symbol": "EUR/USD", "asset_type": "forex", "base_currency": "EUR", "quote_currency": "USD"}
         return None
+
+    def _looks_like_market_question(self, normalized_message: str) -> bool:
+        return self._matches_any(
+            normalized_message,
+            [
+                "cours",
+                "prix",
+                "taux",
+                "change",
+                "forex",
+                "bitcoin",
+                "btc",
+                "ethereum",
+                "eth",
+                "dollar",
+                "usd",
+                "euro",
+                "eur",
+                "fcfa",
+                "xof",
+            ],
+        ) or re.search(r"\b[a-z]{3}\s*/\s*[a-z]{3}\b", normalized_message) is not None
 
     def _matches_any(self, text: str, needles: list[str]) -> bool:
         return any(needle in text for needle in needles)
