@@ -96,6 +96,11 @@ class ChatService:
                 status_code=502,
                 detail=f"Erreur du fournisseur IA ({exc.__class__.__name__}): {error_message}",
             ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Erreur interne lors de l'appel OpenAI ({exc.__class__.__name__}): {str(exc).strip() or 'erreur inconnue'}",
+            ) from exc
 
         answer = (response.output_text or "").strip()
         if not answer:

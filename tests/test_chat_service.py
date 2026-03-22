@@ -38,6 +38,25 @@ def test_chat_service_extracts_openai_error_message_from_body() -> None:
     assert "gpt-5.2" in message
 
 
+def test_chat_service_returns_readable_error_for_unexpected_openai_exception() -> None:
+    service = ChatService(Settings(demo_mode=False, openai_api_key="test-key"))
+
+    class FakeClient:
+        class Responses:
+            async def create(self, **kwargs):
+                raise TypeError("unexpected keyword argument 'input'")
+
+        responses = Responses()
+
+    service.client = FakeClient()
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(service.answer(ChatRequest(message="bonjour", language="fr")))
+
+    assert exc_info.value.status_code == 502
+    assert "TypeError" in exc_info.value.detail
+
+
 def test_chat_service_demo_mode_returns_safe_message() -> None:
     service = ChatService(Settings(demo_mode=True, openai_api_key=None))
 
