@@ -108,6 +108,30 @@ def test_chat_service_demo_mode_returns_allocation_plan_when_requested() -> None
     assert "3. Dynamique" in result.answer
 
 
+def test_chat_service_demo_mode_returns_allocation_plan_after_affirmative_follow_up() -> None:
+    service = ChatService(Settings(demo_mode=True, openai_api_key=None))
+
+    result = asyncio.run(
+        service.answer(
+            ChatRequest(
+                message="d'accord",
+                language="fr",
+                history=[
+                    {"role": "user", "content": "25000 / 5 ans / equilibre"},
+                    {
+                        "role": "assistant",
+                        "content": "Si vous voulez, je peux proposer 3 allocations types.",
+                    },
+                ],
+            )
+        )
+    )
+
+    assert result.source == "demo"
+    assert "1. Prudente" in result.answer
+    assert "3. Dynamique" in result.answer
+
+
 def test_chat_service_demo_mode_returns_savings_plan_when_requested() -> None:
     service = ChatService(Settings(demo_mode=True, openai_api_key=None))
 
@@ -128,6 +152,26 @@ def test_chat_service_demo_mode_returns_savings_plan_when_requested() -> None:
     assert "voici un plan simple en 3 etapes" in normalize_text(result.answer)
     assert "20 000 par mois" in result.answer
     assert "1. reserve de securite" in normalize_text(result.answer)
+
+
+def test_chat_service_demo_mode_handles_capital_and_monthly_savings_for_investing() -> None:
+    service = ChatService(Settings(demo_mode=True, openai_api_key=None))
+
+    result = asyncio.run(
+        service.answer(
+            ChatRequest(
+                message="j'ai 25000 actuellement et 200000 par mois, comment epargner et investir?",
+                language="fr",
+            )
+        )
+    )
+
+    normalized = normalize_text(result.answer)
+
+    assert result.source == "demo"
+    assert "25 000" in result.answer
+    assert "200 000" in result.answer
+    assert "horizon" in normalized or "profil de risque" in normalized
 
 
 def test_chat_service_builds_gpt52_request_with_reasoning_and_temperature() -> None:

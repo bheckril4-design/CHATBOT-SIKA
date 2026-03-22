@@ -358,7 +358,10 @@ class ChatService:
         return self._build_general_demo_reply(context)
 
     def _build_savings_demo_reply(self, context: dict[str, Any]) -> str:
-        if context.get("wants_savings_plan"):
+        if context.get("wants_savings_plan") or (
+            context.get("is_affirmative_follow_up")
+            and (context.get("monthly_savings_amount") is not None or context.get("amount") is not None)
+        ):
             return self._build_savings_plan_reply(context)
         monthly_savings_amount = context.get("monthly_savings_amount")
         if monthly_savings_amount is not None:
@@ -423,15 +426,35 @@ class ChatService:
         )
 
     def _build_investment_demo_reply(self, context: dict[str, Any]) -> str:
-        if context.get("wants_allocation_plan") and context.get("amount") is not None and context.get("duration_months"):
+        if (
+            (context.get("wants_allocation_plan") or context.get("is_affirmative_follow_up"))
+            and context.get("amount") is not None
+            and context.get("duration_months")
+        ):
             return self._build_allocation_plan_reply(context)
 
         amount = context.get("amount")
+        monthly_savings_amount = context.get("monthly_savings_amount")
         duration_months = context.get("duration_months")
         risk_profile = context.get("risk_profile")
         amount_part = f"Avec {self._format_amount(amount)}" if amount is not None else "Avec ce capital"
         horizon_part = f" sur {self._format_duration(duration_months)}" if duration_months else ""
         risk_part = f", dans un profil {risk_profile}" if risk_profile else ""
+
+        if amount is not None and monthly_savings_amount is not None:
+            monthly_part = self._format_amount(monthly_savings_amount)
+            if duration_months:
+                return (
+                    f"Avec {self._format_amount(amount)} deja disponibles et {monthly_part} par mois{horizon_part}{risk_part}, je structurerais en 3 poches. "
+                    "D'abord une reserve de securite vraiment disponible, ensuite une poche projets pour les besoins des 12 a 24 prochains mois, puis une poche investissement diversifiee pour le reste. "
+                    f"En pratique, vous pouvez garder une petite partie des {monthly_part} pour la tresorerie et investir progressivement le solde sur un portefeuille diversifie. "
+                    "Si vous voulez, je peux maintenant vous proposer 3 allocations types et vous dire comment repartir aussi les nouveaux versements mensuels."
+                )
+            return (
+                f"Avec {self._format_amount(amount)} aujourd'hui et {monthly_part} par mois, je commencerais par separer votre effort en deux: epargne de securite d'un cote, investissement progressif de l'autre. "
+                "Conservez d'abord une poche disponible pour les imprévus et les projets proches, puis investissez progressivement une partie fixe chaque mois pour lisser le risque. "
+                "Pour la partie investissement, donnez-moi simplement votre horizon et votre profil de risque, et je vous propose une repartition concrete."
+            )
 
         if duration_months and duration_months <= 24:
             return (
@@ -480,12 +503,18 @@ class ChatService:
             if annual_rate is not None
             else ""
         )
+        monthly_extension = ""
+        if context.get("monthly_savings_amount") is not None:
+            monthly_extension = (
+                f" Si vous versez aussi {self._format_amount(context['monthly_savings_amount'])} par mois, vous pouvez reprendre la meme logique de repartition sur les nouveaux versements."
+            )
         return (
             f"Voici 3 allocations types adaptees a {self._format_duration(context['duration_months'])} pour {self._format_amount(context['amount'])}:\n"
             + "\n".join(lines)
             + "\n"
             + recommendation
             + target_rate
+            + monthly_extension
         )
 
     def _build_general_demo_reply(self, context: dict[str, Any]) -> str:
@@ -501,12 +530,15 @@ class ChatService:
 
     def _extract_context(self, payload: ChatRequest) -> dict[str, Any]:
         user_messages = [item.content for item in payload.history if item.role == "user"]
+        assistant_messages = [item.content for item in payload.history if item.role == "assistant"]
         user_messages.append(payload.message)
         current_normalized = self._normalize(payload.message)
         combined_normalized = " || ".join(self._normalize(message) for message in user_messages)
         combined_text = " || ".join(user_messages)
+        assistant_normalized = " || ".join(self._normalize(message) for message in assistant_messages)
         wants_allocation_plan = self._is_allocation_request(current_normalized)
         wants_savings_plan = self._is_savings_plan_request(current_normalized)
+        is_affirmative_follow_up = self._is_affirmative_follow_up(current_normalized)
         amount = self._find_latest_amount(user_messages)
         monthly_savings_amount = self._find_latest_monthly_amount(user_messages)
         duration_months = self._find_latest_duration_months(user_messages)
@@ -521,6 +553,11 @@ class ChatService:
             topic = "investment"
         if topic is None and wants_savings_plan and (monthly_savings_amount is not None or amount is not None):
             topic = "savings"
+        if topic is None and is_affirmative_follow_up:
+            if self._matches_any(assistant_normalized, ["allocation", "allocations", "repartition", "portefeuille", "profil"]):
+                topic = "investment"
+            elif self._matches_any(assistant_normalized, ["plan simple", "epargne", "reserve de securite", "revenu mensuel"]):
+                topic = "savings"
 
         return {
             "topic": topic,
@@ -533,11 +570,13 @@ class ChatService:
             "insurance_rate": insurance_rate,
             "risk_profile": risk_profile,
             "is_follow_up": self._is_advice_follow_up(current_normalized),
+            "is_affirmative_follow_up": is_affirmative_follow_up,
             "wants_allocation_plan": wants_allocation_plan,
             "wants_savings_plan": wants_savings_plan,
             "current_normalized": current_normalized,
             "combined_normalized": combined_normalized,
             "combined_text": combined_text,
+            "assistant_normalized": assistant_normalized,
         }
 
     def _find_latest_topic(self, messages: list[str]) -> str | None:
@@ -647,6 +686,25 @@ class ChatService:
 
     def _is_advice_follow_up(self, normalized_message: str) -> bool:
         return self._matches_any(normalized_message, ["tu me conseilles", "vous me conseillez", "que faire", "je fais quoi", "tu proposes", "vous proposez", "tu ferais quoi", "que me proposes", "quelle option"])
+
+    def _is_affirmative_follow_up(self, normalized_message: str) -> bool:
+        return self._matches_any(
+            normalized_message,
+            [
+                "d'accord",
+                "ok",
+                "okay",
+                "oui",
+                "vas-y",
+                "vas y",
+                "allons-y",
+                "allons y",
+                "je veux bien",
+                "ca marche",
+                "tres bien",
+                "parfait",
+            ],
+        )
 
     def _is_allocation_request(self, normalized_message: str) -> bool:
         return self._matches_any(normalized_message, ["allocation", "allocations", "repartition", "repartitions", "portefeuille type", "portefeuilles types", "3 allocations", "trois allocations", "3 options", "trois options"])
