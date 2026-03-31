@@ -14,25 +14,27 @@ const Header = ({ onConsultationClick }) => {
     >
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <motion.div className="flex items-center space-x-3" whileHover={{ scale: 1.05 }}>
-            <div className="flex h-12 w-12 items-center justify-center">
-              <img
-                src="https://storage.googleapis.com/hostinger-horizons-assets-prod/b727d054-1078-49e9-b578-fe3a7f228875/20119d4f61b3079b66426299117ab748.jpg"
-                alt="Oceanic Conseils Sarl Logo"
-                className="rounded-lg object-contain"
-              />
-            </div>
-            <span className="text-xl font-bold text-white md:text-2xl">SIKA</span>
+          <motion.div whileHover={{ scale: 1.05 }}>
+            <Link to="/" className="flex items-center space-x-3">
+              <div className="flex h-12 w-12 items-center justify-center">
+                <img
+                  src="https://storage.googleapis.com/hostinger-horizons-assets-prod/b727d054-1078-49e9-b578-fe3a7f228875/20119d4f61b3079b66426299117ab748.jpg"
+                  alt="Oceanic Conseils Sarl Logo"
+                  className="rounded-lg object-contain"
+                />
+              </div>
+              <span className="text-xl font-bold text-white md:text-2xl">SIKA</span>
+            </Link>
           </motion.div>
 
           <div className="hidden items-center space-x-8 md:flex">
-            <a href="#services" className="text-white/80 transition-colors hover:text-white">
+            <a href="/#services" className="text-white/80 transition-colors hover:text-white">
               Services
             </a>
-            <a href="#calculators" className="text-white/80 transition-colors hover:text-white">
+            <a href="/#calculators" className="text-white/80 transition-colors hover:text-white">
               Calculateurs
             </a>
-            <a href="#testimonials" className="text-white/80 transition-colors hover:text-white">
+            <a href="/#testimonials" className="text-white/80 transition-colors hover:text-white">
               T&eacute;moignages
             </a>
             <Link to="/assistant" className="text-white/80 transition-colors hover:text-white">
