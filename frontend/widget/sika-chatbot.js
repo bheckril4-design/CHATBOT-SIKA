@@ -11,7 +11,14 @@
 
   const scriptUrl = new URL(script.src, window.location.href);
   const assetBase = new URL('./', scriptUrl).href;
-  const apiBase = (script.dataset.apiBase || scriptUrl.origin).replace(/\/$/, '');
+  const normalizeBase = (value) => String(value || '').trim().replace(/\/$/, '');
+  const explicitApiBase = normalizeBase(script.dataset.apiBase || '');
+  const runningLocally =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const sameOriginHostedApi =
+    !runningLocally && explicitApiBase && explicitApiBase === normalizeBase(window.location.origin);
+  const staticMode = (!explicitApiBase && !runningLocally) || sameOriginHostedApi;
+  const apiBase = explicitApiBase || (runningLocally ? normalizeBase(scriptUrl.origin) : '');
   const defaultLanguage = script.dataset.defaultLanguage || 'fr';
   const title = script.dataset.title || 'SIKA';
   const requestTimeoutMs = 15000;
@@ -146,6 +153,14 @@
       }, requestTimeoutMs);
 
       try {
+        if (staticMode || !apiBase) {
+          addMessage('assistant', buildLocalAssistantReply(message));
+          setLoading(false);
+          statusEl.textContent =
+            'Mode autonome actif. Ce widget fonctionne directement dans le navigateur.';
+          return;
+        }
+
         const response = await fetch(`${apiBase}/chat`, {
           method: 'POST',
           headers: {
@@ -166,13 +181,21 @@
 
         const data = await response.json();
         addMessage('assistant', data.answer);
+        statusEl.textContent = '';
       } catch (error) {
-        addMessage(
-          'assistant',
-          error.name === 'AbortError'
-            ? 'SIKA met trop de temps \u00e0 r\u00e9pondre. Merci de r\u00e9essayer dans quelques secondes.'
-            : "Je n'arrive pas \u00e0 joindre l'API SIKA pour le moment. V\u00e9rifiez l'URL du backend et la configuration CORS."
-        );
+        if (staticMode || isNetworkLikeError(error)) {
+          addMessage('assistant', buildLocalAssistantReply(message));
+          statusEl.textContent =
+            'Mode autonome actif. Ce widget fonctionne directement dans le navigateur.';
+        } else {
+          addMessage(
+            'assistant',
+            error.name === 'AbortError'
+              ? 'SIKA met trop de temps \u00e0 r\u00e9pondre. Merci de r\u00e9essayer dans quelques secondes.'
+              : "Je n'arrive pas \u00e0 joindre l'API SIKA pour le moment. V\u00e9rifiez l'URL du backend et la configuration CORS."
+          );
+          statusEl.textContent = '';
+        }
       } finally {
         window.clearTimeout(timeoutId);
         setLoading(false);
@@ -191,7 +214,14 @@
 
     function setLoading(active) {
       state.isLoading = active;
-      statusEl.textContent = active ? 'SIKA r\u00e9fl\u00e9chit...' : '';
+      if (active) {
+        statusEl.textContent = 'SIKA r\u00e9fl\u00e9chit...';
+        return;
+      }
+
+      if (statusEl.textContent === 'SIKA r\u00e9fl\u00e9chit...') {
+        statusEl.textContent = '';
+      }
     }
   }
 
@@ -226,5 +256,48 @@
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
+  }
+
+  function buildLocalAssistantReply(message) {
+    const normalized = normalizeForMatch(message);
+
+    if (matchesAny(normalized, ['bonjour', 'salut', 'bonsoir', 'hello'])) {
+      return "Bonjour. Vous pouvez me parler naturellement. Par exemple : j'ai 25 000 aujourd'hui et 200 000 par mois, comment m'organiser ?";
+    }
+
+    if (matchesAny(normalized, ['epargne', 'epargner', 'budget'])) {
+      return "Pour bien demarrer, commencez par automatiser un montant realiste, constituer une reserve de securite, puis separer l'argent des projets proches de celui a investir plus longtemps.";
+    }
+
+    if (matchesAny(normalized, ['invest', 'placement', 'rendement'])) {
+      return "Pour investir utilement, donnez-moi le montant, l'horizon et votre tolerance au risque. Je peux ensuite vous proposer une orientation claire.";
+    }
+
+    if (matchesAny(normalized, ['credit', 'pret', 'mensualite'])) {
+      return "Avant de prendre un credit, regardez surtout la mensualite supportable, le cout total et la marge de securite qui reste apres vos charges fixes.";
+    }
+
+    return "Je peux vous aider sur l'epargne, le budget, le credit, la retraite et les bases de l'investissement. Donnez-moi simplement votre objectif, les montants en jeu et votre horizon.";
+  }
+
+  function matchesAny(text, needles) {
+    return needles.some(function (needle) {
+      return text.includes(needle);
+    });
+  }
+
+  function normalizeForMatch(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function isNetworkLikeError(error) {
+    const message = String((error && error.message) || '');
+    return (
+      (error && error.name) === 'TypeError' ||
+      /Failed to fetch|NetworkError|Load failed|ERR_CONNECTION|ERR_FAILED/i.test(message)
+    );
   }
 })();

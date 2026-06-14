@@ -4,12 +4,13 @@ import { AlertCircle, Home, Loader2, Target, TrendingUp } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { calculateLocally } from '@/lib/calculations';
-import { getApiBase } from '@/lib/api';
+import { getApiBase, isStaticMode } from '@/lib/api';
 
 const API_BASE = getApiBase();
 const CALCULATION_REQUEST_TIMEOUT_MS = 8000;
 const IS_PRODUCTION = import.meta.env.PROD;
-const ALLOW_LOCAL_FALLBACK = !IS_PRODUCTION;
+const STATIC_MODE = isStaticMode();
+const ALLOW_LOCAL_FALLBACK = STATIC_MODE || !IS_PRODUCTION;
 const INPUT_CLASS_NAME =
   'w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/35 outline-none transition focus:border-gold-400';
 const NUMBER_FORMATTER = new Intl.NumberFormat('fr-FR', {
@@ -412,6 +413,14 @@ const Calculators = () => {
       const calculationRequest = activeConfig.buildRequest(activeValues);
 
       try {
+        if (STATIC_MODE || !API_BASE) {
+          setResults((prev) => ({
+            ...prev,
+            [activeCalculator]: buildSuccessResult(buildLocalFallback(calculationRequest), 'local'),
+          }));
+          return;
+        }
+
         const response = await fetch(`${API_BASE}/calculate`, {
           method: 'POST',
           headers: {
@@ -625,10 +634,10 @@ const Calculators = () => {
                         <p className="mt-3 text-sm leading-6 text-white/60">
                           {activeResult.summary}
                         </p>
-                        {!IS_PRODUCTION && activeResult.source === 'local' && (
+                        {activeResult.source === 'local' && (
                           <div className="mt-3 flex justify-center">
                             <span className="inline-flex items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
-                              Secours local actif
+                              {STATIC_MODE ? 'Calcul embarqu&eacute;' : 'Secours local actif'}
                             </span>
                           </div>
                         )}

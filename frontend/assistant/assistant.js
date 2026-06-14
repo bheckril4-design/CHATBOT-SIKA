@@ -1,12 +1,21 @@
-const API_BASE = (window.SIKA_API_BASE || window.location.origin).replace(/\/$/, '');
+function normalizeBase(value) {
+  return String(value || '').trim().replace(/\/$/, '');
+}
+
+const EXPLICIT_API_BASE = normalizeBase(window.SIKA_API_BASE || '');
+const RUNNING_LOCALLY =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const SAME_ORIGIN_HOSTED_API =
+  !RUNNING_LOCALLY &&
+  EXPLICIT_API_BASE &&
+  EXPLICIT_API_BASE === normalizeBase(window.location.origin);
+const STATIC_MODE = (!EXPLICIT_API_BASE && !RUNNING_LOCALLY) || SAME_ORIGIN_HOSTED_API;
+const API_BASE = EXPLICIT_API_BASE || (RUNNING_LOCALLY ? normalizeBase(window.location.origin) : '');
 const STORAGE_KEY = 'sika_assistant_user_id';
 const REQUEST_TIMEOUT_MS = 15000;
 const MAX_HISTORY_MESSAGES = 50;
 const MAX_CONTEXT_MESSAGES = 16;
-const ALLOW_LOCAL_FALLBACK =
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '127.0.0.1' ||
-  /localhost|127\.0\.0\.1/.test(API_BASE);
+const ALLOW_LOCAL_FALLBACK = STATIC_MODE || RUNNING_LOCALLY || /localhost|127\.0\.0\.1/.test(API_BASE);
 const SPEECH_LANGUAGE_MAP = {
   fr: 'fr-FR',
   fon: 'fr-FR',
@@ -85,6 +94,12 @@ async function sendMessage(rawMessage, options) {
   }, REQUEST_TIMEOUT_MS);
 
   try {
+    if (STATIC_MODE || !API_BASE) {
+      addMessage('assistant', buildLocalAssistantReply(message));
+      setStatus('Mode autonome actif. Cette page fonctionne directement dans le navigateur.');
+      return;
+    }
+
     const recentHistory = state.history
       .filter(function (item) {
         return item.role === 'assistant' || item.role === 'user';
@@ -110,7 +125,7 @@ async function sendMessage(rawMessage, options) {
     if (!response.ok) {
       if (ALLOW_LOCAL_FALLBACK && response.status >= 500) {
         addMessage('assistant', buildLocalAssistantReply(message));
-        setStatus('Mode local actif. Cette page utilise un moteur de secours local.');
+        setStatus('Mode autonome actif. Cette page fonctionne directement dans le navigateur.');
         return;
       }
 
@@ -120,7 +135,7 @@ async function sendMessage(rawMessage, options) {
     if (!payload?.answer) {
       if (ALLOW_LOCAL_FALLBACK) {
         addMessage('assistant', buildLocalAssistantReply(message));
-        setStatus('Mode local actif. Cette page utilise un moteur de secours local.');
+        setStatus('Mode autonome actif. Cette page fonctionne directement dans le navigateur.');
         return;
       }
 
@@ -138,7 +153,7 @@ async function sendMessage(rawMessage, options) {
   } catch (error) {
     if (ALLOW_LOCAL_FALLBACK && (error.name === 'AbortError' || isNetworkLikeError(error))) {
       addMessage('assistant', buildLocalAssistantReply(message));
-      setStatus('Mode local actif. Cette page utilise un moteur de secours local.');
+      setStatus('Mode autonome actif. Cette page fonctionne directement dans le navigateur.');
     } else if (error.name === 'AbortError') {
       addMessage('assistant', "L'assistant SIKA a mis trop de temps à répondre. Merci de réessayer.");
       setStatus('');

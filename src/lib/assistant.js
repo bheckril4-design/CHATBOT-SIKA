@@ -1,3 +1,5 @@
+import { isStaticMode } from './api';
+
 const NUMBER_FORMATTER = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 0,
 });
@@ -38,6 +40,13 @@ export async function requestAssistantReply({
   history,
   signal,
 }) {
+  if (isStaticMode() || !String(apiBase || '').trim()) {
+    return {
+      answer: buildLocalAssistantReply({ message, language, history }),
+      source: 'local',
+    };
+  }
+
   const allowLocalFallback = shouldAllowLocalFallback(apiBase);
 
   try {

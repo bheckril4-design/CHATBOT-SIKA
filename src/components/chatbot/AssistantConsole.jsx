@@ -12,9 +12,10 @@ import {
   requestAssistantReply,
   welcomeByLanguage,
 } from '@/lib/assistant';
-import { getApiBase } from '@/lib/api';
+import { getApiBase, isStaticMode } from '@/lib/api';
 
 const API_BASE = getApiBase();
+const STATIC_MODE = isStaticMode();
 const SPEECH_LANGUAGE_MAP = {
   fr: 'fr-FR',
   fon: 'fr-FR',
@@ -345,8 +346,9 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
 
         {isLocalMode && (
           <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-50">
-            Mode local actif. En environnement local, SIKA utilise un moteur de secours si
-            l&apos;API n&apos;est pas joignable.
+            {STATIC_MODE
+              ? 'Mode autonome actif. Cette version fonctionne directement dans le navigateur, sans service externe obligatoire.'
+              : 'Mode local actif. En environnement local, SIKA utilise un moteur de secours si l’API n’est pas joignable.'}
           </div>
         )}
 
