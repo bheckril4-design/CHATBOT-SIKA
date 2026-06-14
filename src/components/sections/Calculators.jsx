@@ -563,8 +563,8 @@ const Calculators = () => {
           </div>
 
           <div className="mb-6 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-4 text-sm text-cyan-50">
-            Conservez la m&ecirc;me devise du d&eacute;but &agrave; la fin de la simulation. Les
-            outils ci-dessous n&apos;effectuent aucune conversion automatique.
+            Conservez la même devise du début à la fin de la simulation. Les
+            outils ci-dessous n'effectuent aucune conversion automatique.
           </div>
 
           {activeConfig && (
@@ -620,7 +620,7 @@ const Calculators = () => {
                       <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-5 text-left text-amber-50">
                         <div className="mb-2 flex items-center gap-2 font-semibold">
                           <AlertCircle className="h-5 w-5" />
-                          Simulation &agrave; v&eacute;rifier
+                          Simulation à vérifier
                         </div>
                         <p className="text-sm leading-6">{activeResult.error}</p>
                       </div>
@@ -637,7 +637,7 @@ const Calculators = () => {
                         {activeResult.source === 'local' && (
                           <div className="mt-3 flex justify-center">
                             <span className="inline-flex items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
-                              {STATIC_MODE ? 'Calcul embarqu&eacute;' : 'Secours local actif'}
+                              {STATIC_MODE ? 'Calcul local' : 'Secours local actif'}
                             </span>
                           </div>
                         )}
@@ -676,7 +676,7 @@ const Calculators = () => {
                         {activeResult.schedule.length > 0 && (
                           <div className="mt-6 text-left">
                             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/80">
-                              Tableau d&apos;amortissement
+                              Tableau d'amortissement
                             </p>
                             <div className="max-h-80 overflow-auto rounded-2xl border border-white/10 bg-white/5">
                               <table className="min-w-full text-sm text-white/80">

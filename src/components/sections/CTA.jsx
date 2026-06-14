@@ -15,11 +15,11 @@ const CTA = ({ onConsultationClick, onContactClick }) => (
         className="rounded-3xl border border-gold-400/30 bg-gradient-to-r from-gold-400/20 to-yellow-500/20 p-12 text-center backdrop-blur-md"
       >
         <h2 className="mb-6 text-4xl font-bold text-white">
-          Pr&ecirc;t &agrave; cadrer vos prochaines d&eacute;cisions financi&egrave;res ?
+          Prêt à cadrer vos prochaines décisions financières ?
         </h2>
         <p className="mx-auto mb-8 max-w-2xl text-xl text-white/80">
-          &Eacute;changez avec Oceanic Conseils pour valider vos hypoth&egrave;ses, vos priorit&eacute;s
-          et les limites des simulations avant toute d&eacute;cision engageante.
+          Échangez avec Oceanic Conseils pour valider vos hypothèses, vos priorités
+          et les limites des simulations avant toute décision engageante.
         </p>
         <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <Button

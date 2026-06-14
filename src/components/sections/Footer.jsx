@@ -10,16 +10,16 @@ const Footer = ({ onFeatureClick }) => (
           <div className="mb-6 flex items-center space-x-3">
             <div className="flex h-12 w-12 items-center justify-center">
               <img
-                src="https://storage.googleapis.com/hostinger-horizons-assets-prod/b727d054-1078-49e9-b578-fe3a7f228875/20119d4f61b3079b66426299117ab748.jpg"
+                src="/logo-sika.svg"
                 alt="SIKA Logo"
-                className="rounded-lg object-contain"
+                className="h-12 w-12 rounded-lg object-contain"
               />
             </div>
             <span className="text-xl font-bold text-white">SIKA</span>
           </div>
           <p className="text-white/70">
-            Outils, explications et accompagnement pour pr&eacute;parer des d&eacute;cisions
-            financi&egrave;res plus claires et plus prudentes.
+            Outils, explications et accompagnement pour préparer des décisions financières
+            plus claires et plus prudentes.
           </p>
         </div>
 
@@ -101,21 +101,21 @@ const Footer = ({ onFeatureClick }) => (
           <h3 className="mb-4 font-semibold text-white">Contact</h3>
           <ul className="space-y-2 text-white/70">
             <li>Email : contact@oceanicconseils.com</li>
-            <li>T&eacute;l. B&eacute;nin : +229 0197392580</li>
-            <li>T&eacute;l. Maroc : +212 660693839</li>
-            <li>Adresse : Agla les pyl&ocirc;nes, Cotonou B&eacute;nin</li>
+            <li>Tél. Bénin : +229 0197392580</li>
+            <li>Tél. Maroc : +212 660693839</li>
+            <li>Adresse : Agla les pylônes, Cotonou Bénin</li>
           </ul>
         </div>
       </div>
 
       <div className="mt-8 border-t border-white/20 pt-8 text-center text-white/60">
-        <p>&copy; {new Date().getFullYear()} SIKA (Oceanic Conseils Sarl). Tous droits r&eacute;serv&eacute;s.</p>
+        <p>© {new Date().getFullYear()} SIKA (Oceanic Conseils Sarl). Tous droits réservés.</p>
         <div className="mt-4">
           <Link
             to="/mentions-legales"
             className="text-sm text-white/60 transition-colors hover:text-white"
           >
-            Mentions l&eacute;gales
+            Mentions légales
           </Link>
         </div>
       </div>

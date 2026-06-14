@@ -36,14 +36,14 @@ const Testimonials = () => (
         className="mb-14 text-center"
       >
         <p className="mb-3 text-sm uppercase tracking-[0.35em] text-cyan-200/75">
-          T&eacute;moignages
+          Témoignages
         </p>
         <h2 className="mb-5 text-4xl font-bold text-white md:text-5xl">
           Ce que nos clients disent
         </h2>
         <p className="mx-auto max-w-3xl text-lg leading-8 text-white/72 md:text-xl">
-          Des retours d&apos;exp&eacute;rience concrets sur la qualit&eacute; de l&apos;accompagnement
-          et la clart&eacute; des conseils.
+          Des retours d'expérience concrets sur la qualité de l'accompagnement
+          et la clarté des conseils.
         </p>
       </motion.div>
 
@@ -67,7 +67,7 @@ const Testimonials = () => (
             </div>
 
             <blockquote className="min-h-[176px] text-[22px] font-medium italic leading-[1.8] text-white/86">
-              &quot;{testimonial.quote}&quot;
+              "{testimonial.quote}"
             </blockquote>
 
             <div className="mt-10">

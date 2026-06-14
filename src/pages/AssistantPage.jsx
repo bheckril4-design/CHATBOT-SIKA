@@ -24,9 +24,9 @@ const AssistantPage = () => {
               Votre assistant financier en ligne
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-white/70 md:text-lg">
-              Posez vos questions sur l&apos;&eacute;pargne, le budget, le cr&eacute;dit et les bases
-              de l&apos;investissement. La version texte est d&eacute;j&agrave; op&eacute;rationnelle, avec
-              une base pr&ecirc;te pour la voix et les langues locales.
+              Posez vos questions sur l'épargne, le budget, le crédit et les bases
+              de l'investissement. La version texte est déjà opérationnelle, avec
+              une base prête pour la voix et les langues locales.
             </p>
           </div>
 

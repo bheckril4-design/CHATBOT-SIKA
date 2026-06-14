@@ -23,8 +23,8 @@ const Hero = ({ onConsultationClick, onPortfolioClick }) => (
             </span>
           </h1>
           <p className="mb-8 text-xl leading-relaxed text-white/80">
-            Structurez vos d&eacute;cisions financi&egrave;res avec des explications prudentes,
-            des simulateurs clairs et un accompagnement adapt&eacute; &agrave; votre contexte.
+            Structurez vos décisions financières avec des explications prudentes,
+            des simulateurs clairs et un accompagnement adapté à votre contexte.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row">
             <Button
@@ -66,21 +66,21 @@ const Hero = ({ onConsultationClick, onPortfolioClick }) => (
                   <Users className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white">Clair</h3>
-                <p className="text-white/70">P&eacute;dagogie pour d&eacute;butants et dirigeants</p>
+                <p className="text-white/70">Pédagogie pour débutants et dirigeants</p>
               </div>
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-purple-400 to-violet-500">
                   <Shield className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white">Cadre</h3>
-                <p className="text-white/70">Donn&eacute;es prot&eacute;g&eacute;es et validation humaine recommand&eacute;e</p>
+                <p className="text-white/70">Données protégées et validation humaine recommandée</p>
               </div>
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-orange-400 to-red-500">
                   <BookOpen className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white">Accessible</h3>
-                <p className="text-white/70">Pens&eacute; pour des usages financiers clairs, utiles et adaptables &agrave; diff&eacute;rents contextes</p>
+                <p className="text-white/70">Pensé pour des usages financiers clairs, utiles et adaptables à différents contextes</p>
               </div>
             </div>
           </div>

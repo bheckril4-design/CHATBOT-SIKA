@@ -18,9 +18,9 @@ const Header = ({ onConsultationClick }) => {
             <Link to="/" className="flex items-center space-x-3">
               <div className="flex h-12 w-12 items-center justify-center">
                 <img
-                  src="https://storage.googleapis.com/hostinger-horizons-assets-prod/b727d054-1078-49e9-b578-fe3a7f228875/20119d4f61b3079b66426299117ab748.jpg"
-                  alt="Oceanic Conseils Sarl Logo"
-                  className="rounded-lg object-contain"
+                  src="/logo-sika.svg"
+                  alt="Logo SIKA"
+                  className="h-12 w-12 rounded-lg object-contain"
                 />
               </div>
               <span className="text-xl font-bold text-white md:text-2xl">SIKA</span>
@@ -35,7 +35,7 @@ const Header = ({ onConsultationClick }) => {
               Calculateurs
             </a>
             <a href="/#testimonials" className="text-white/80 transition-colors hover:text-white">
-              T&eacute;moignages
+              Témoignages
             </a>
             <Link to="/assistant" className="text-white/80 transition-colors hover:text-white">
               Assistant

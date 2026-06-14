@@ -38,9 +38,9 @@ const Services = () => (
         viewport={{ once: true }}
         className="mb-16 text-center"
       >
-        <h2 className="mb-6 text-4xl font-bold text-white">Nos Services Sp&eacute;cialis&eacute;s</h2>
+        <h2 className="mb-6 text-4xl font-bold text-white">Nos Services Spécialisés</h2>
         <p className="mx-auto max-w-3xl text-xl text-white/70">
-          Des solutions financi&egrave;res sur mesure pour vos objectifs uniques.
+          Des solutions financières sur mesure pour vos objectifs uniques.
         </p>
       </motion.div>
 

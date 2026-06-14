@@ -317,7 +317,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
               className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-white/80 transition hover:border-white/25 hover:text-white"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              Plein &eacute;cran
+              Plein écran
             </Link>
           )}
         </div>
@@ -333,7 +333,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
             className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-gold-400"
           >
             <option value="fr" className="text-slate-900">
-              Fran&ccedil;ais
+              Français
             </option>
             <option value="fon" className="text-slate-900">
               Fon
@@ -382,7 +382,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
           {isLoading && (
             <div className="flex justify-start">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-cyan-200">
-                SIKA r&eacute;fl&eacute;chit...
+                SIKA réfléchit...
               </div>
             </div>
           )}
@@ -393,7 +393,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
 
       <footer className="border-t border-white/10 bg-black/15 p-4">
         <div className="mb-3 flex items-center justify-between gap-3 text-xs text-white/45">
-          <span>Informations &eacute;ducatives, pas de promesse de rendement.</span>
+          <span>Informations éducatives, pas de promesse de rendement.</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -429,7 +429,7 @@ const AssistantConsole = ({ variant = 'page', showFullscreenLink = false }) => {
                 handleSendMessage();
               }
             }}
-            placeholder="Exemple : comment commencer &agrave; &eacute;pargner avec 25 000 XOF par mois ?"
+            placeholder="Exemple : comment commencer à épargner avec 25 000 XOF par mois ?"
             className="min-h-[56px] flex-1 resize-none rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:border-gold-400 focus:outline-none"
           />
 

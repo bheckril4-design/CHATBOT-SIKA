@@ -92,7 +92,7 @@ const bestPractices = [
 const GuidesPage = () => (
   <div className="px-6 py-16 lg:px-8 lg:py-20">
     <Helmet>
-      <title>Guide d&apos;utilisation - SIKA</title>
+      <title>Guide d'utilisation - SIKA</title>
       <meta
         name="description"
         content="Guide d'utilisation de SIKA : assistant, calculateurs, bonnes pratiques et parcours de prise en main."
@@ -105,7 +105,7 @@ const GuidesPage = () => (
         className="mb-8 inline-flex items-center gap-2 text-gold-400 transition-colors hover:text-gold-300"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour à l&apos;accueil
+        Retour à l'accueil
       </Link>
 
       <motion.section
@@ -118,14 +118,14 @@ const GuidesPage = () => (
         <div className="relative">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200">
             <Sparkles className="h-4 w-4" />
-            Guide d&apos;utilisation
+            Guide d'utilisation
           </div>
 
           <h1 className="max-w-4xl text-4xl font-bold leading-tight text-white md:text-5xl lg:text-6xl">
             Utiliser SIKA de façon simple, fiable et utile
           </h1>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-white/75 md:text-xl">
-            Cette page vous guide pas à pas pour bien utiliser l&apos;assistant, comprendre les
+            Cette page vous guide pas à pas pour bien utiliser l'assistant, comprendre les
             simulateurs et vérifier les hypothèses importantes avant de prendre une décision.
           </p>
 
@@ -134,14 +134,14 @@ const GuidesPage = () => (
               to="/assistant"
               className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition-transform hover:-translate-y-0.5"
             >
-              Ouvrir l&apos;assistant
+              Ouvrir l'assistant
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/"
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
-              Voir la page d&apos;accueil
+              Voir la page d'accueil
             </Link>
           </div>
         </div>
