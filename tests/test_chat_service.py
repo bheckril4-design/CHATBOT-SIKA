@@ -26,6 +26,16 @@ def test_chat_service_requires_openai_when_demo_disabled() -> None:
     assert exc_info.value.status_code == 503
 
 
+def test_chat_service_requires_ollama_configuration_when_provider_is_ollama() -> None:
+    service = ChatService(Settings(demo_mode=False, ai_provider="ollama", ollama_model=None))
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(service.answer(ChatRequest(message="Bonjour", language="fr")))
+
+    assert exc_info.value.status_code == 503
+    assert "OLLAMA_MODEL" in exc_info.value.detail
+
+
 def test_chat_service_extracts_openai_error_message_from_body() -> None:
     service = ChatService(Settings(demo_mode=False, openai_api_key="test-key"))
 
@@ -233,6 +243,27 @@ def test_chat_service_builds_gpt52_request_with_reasoning_and_temperature() -> N
     assert request["reasoning"]["effort"] == "none"
     assert request["text"]["verbosity"] == "medium"
     assert request["temperature"] == 0.2
+
+
+def test_chat_service_uses_ollama_provider_when_configured(monkeypatch) -> None:
+    service = ChatService(
+        Settings(
+            demo_mode=False,
+            ai_provider="ollama",
+            ollama_base_url="http://ollama.local:11434",
+            ollama_model="qwen3:8b",
+        )
+    )
+
+    async def fake_ollama_answer(prompt):
+        return "Bonjour, je peux vous aider a structurer ce projet d'epargne."
+
+    monkeypatch.setattr(service, "_ollama_answer", fake_ollama_answer)
+
+    result = asyncio.run(service.answer(ChatRequest(message="bonjour", language="fr")))
+
+    assert result.source == "ollama"
+    assert "Bonjour" in result.answer
 
 
 def test_chat_service_builds_older_gpt5_request_without_temperature_when_needed() -> None:

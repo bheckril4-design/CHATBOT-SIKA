@@ -42,3 +42,19 @@ def test_readiness_is_ready_in_demo_mode_without_openai_key(monkeypatch) -> None
     assert payload["checks"]["chat_mode"] == "demo"
     assert "demo_mode_active" in payload["warnings"]
     assert "openai_api_key_missing" not in payload["warnings"]
+
+
+def test_readiness_is_ready_with_ollama_provider(monkeypatch) -> None:
+    monkeypatch.setattr(main_module.settings, "demo_mode", False)
+    monkeypatch.setattr(main_module.settings, "ai_provider", "ollama")
+    monkeypatch.setattr(main_module.settings, "ollama_model", "qwen3:8b")
+    monkeypatch.setattr(main_module.settings, "ollama_base_url", "http://127.0.0.1:11434")
+
+    client = TestClient(app)
+    response = client.get("/readiness")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert payload["checks"]["chat_mode"] == "ollama"
+    assert payload["checks"]["chat_ready"] is True

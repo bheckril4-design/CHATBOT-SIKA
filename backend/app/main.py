@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -16,6 +17,7 @@ settings = get_settings()
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WIDGET_DIR = REPO_ROOT / "frontend" / "widget"
 ASSISTANT_DIR = REPO_ROOT / "frontend" / "assistant"
+DIST_DIR = REPO_ROOT / "dist"
 
 app = FastAPI(
     title=settings.app_name,
@@ -89,7 +91,9 @@ async def add_security_headers(request: Request, call_next):
 
 
 @app.get("/")
-async def root() -> dict[str, object]:
+async def root():
+    if settings.serve_frontend_from_backend and DIST_DIR.exists():
+        return FileResponse(DIST_DIR / "index.html")
     return {
         "name": settings.app_name,
         "version": settings.app_version,
@@ -106,8 +110,25 @@ async def health() -> dict[str, str]:
 
 @app.get("/readiness")
 async def readiness() -> dict[str, object]:
-    chat_mode = "demo" if settings.demo_mode else "openai" if settings.openai_api_key else "unavailable"
-    chat_ready = chat_mode in {"demo", "openai"}
+    if settings.demo_mode:
+        chat_mode = "demo"
+        chat_ready = True
+    elif settings.ai_provider == "ollama":
+        chat_mode = "ollama"
+        chat_ready = bool(settings.ollama_model and settings.ollama_base_url)
+    elif settings.ai_provider == "openai":
+        chat_mode = "openai"
+        chat_ready = bool(settings.openai_api_key)
+    else:
+        if settings.openai_api_key:
+            chat_mode = "openai"
+            chat_ready = True
+        elif settings.ollama_model and settings.ollama_base_url:
+            chat_mode = "ollama"
+            chat_ready = True
+        else:
+            chat_mode = "unavailable"
+            chat_ready = False
     finance_ready = (
         settings.market_data_provider != "demo"
         and (
@@ -122,8 +143,10 @@ async def readiness() -> dict[str, object]:
     warnings: list[str] = []
     if settings.demo_mode:
         warnings.append("demo_mode_active")
-    if not settings.demo_mode and not settings.openai_api_key:
+    if not settings.demo_mode and chat_mode == "openai" and not settings.openai_api_key:
         warnings.append("openai_api_key_missing")
+    if not settings.demo_mode and chat_mode == "ollama" and not (settings.ollama_model and settings.ollama_base_url):
+        warnings.append("ollama_not_fully_configured")
     if settings.market_data_provider == "demo":
         warnings.append("finance_provider_demo")
     if not finance_ready:
@@ -143,3 +166,29 @@ async def readiness() -> dict[str, object]:
         },
         "warnings": warnings,
     }
+
+
+def _serve_frontend_enabled() -> bool:
+    return settings.serve_frontend_from_backend and DIST_DIR.exists()
+
+
+def _resolve_frontend_file(full_path: str) -> Path:
+    relative_path = full_path.strip("/") or "index.html"
+    candidate = (DIST_DIR / relative_path).resolve()
+    dist_root = DIST_DIR.resolve()
+    if not str(candidate).startswith(str(dist_root)):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if candidate.is_file():
+        return candidate
+    return DIST_DIR / "index.html"
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_frontend_app(full_path: str):
+    if not _serve_frontend_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    if full_path.startswith(("chat", "calculate", "market-data", "voice-to-text", "text-to-speech", "health", "readiness", "widget", "assistant-app")):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    return FileResponse(_resolve_frontend_file(full_path))

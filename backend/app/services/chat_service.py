@@ -5,6 +5,8 @@ import unicodedata
 from functools import lru_cache
 from typing import Any
 
+import httpx
+
 from fastapi import HTTPException
 
 try:
@@ -78,8 +80,9 @@ class ChatService:
         language = self._resolve_language(payload.language)
         user_id = payload.user_id or "anonymous"
         context = self._extract_context(payload)
+        provider = self._resolve_chat_provider()
 
-        if self.settings.demo_mode:
+        if provider == "demo":
             return ChatResponse(
                 answer=await self._demo_answer(context, language),
                 language=language,
@@ -87,13 +90,53 @@ class ChatService:
                 user_id=user_id,
             )
 
-        if not self.client:
-            if self.settings.openai_api_key and AsyncOpenAI is None:
-                raise HTTPException(status_code=503, detail="Le package OpenAI n'est pas installé sur ce serveur.")
-            raise HTTPException(status_code=503, detail="Le mode démo est désactivé et OPENAI_API_KEY n'est pas configuré.")
+        prompt = await self._build_prompt(payload, language, context)
+        if provider == "openai":
+            answer = await self._openai_answer(prompt)
+            return ChatResponse(answer=answer, language=language, source="openai", user_id=user_id)
+        if provider == "ollama":
+            answer = await self._ollama_answer(prompt)
+            return ChatResponse(answer=answer, language=language, source="ollama", user_id=user_id)
+        raise HTTPException(status_code=503, detail="Aucun fournisseur IA disponible.")
 
+    def _resolve_chat_provider(self) -> str:
+        if self.settings.demo_mode:
+            return "demo"
+
+        provider = self.settings.ai_provider.lower().strip()
+        if provider == "openai":
+            if self.settings.openai_api_key and self.client:
+                return "openai"
+            if self.settings.openai_api_key and AsyncOpenAI is None:
+                raise HTTPException(status_code=503, detail="Le package OpenAI n'est pas installe sur ce serveur.")
+            raise HTTPException(status_code=503, detail="AI_PROVIDER=openai mais OPENAI_API_KEY n'est pas configure.")
+
+        if provider == "ollama":
+            if self._ollama_is_ready():
+                return "ollama"
+            raise HTTPException(status_code=503, detail="AI_PROVIDER=ollama mais OLLAMA_MODEL ou OLLAMA_BASE_URL n'est pas configure.")
+
+        if provider == "auto":
+            if self.settings.openai_api_key and self.client:
+                return "openai"
+            if self._ollama_is_ready():
+                return "ollama"
+
+        if self.settings.openai_api_key and AsyncOpenAI is None:
+            raise HTTPException(status_code=503, detail="Le package OpenAI n'est pas installe sur ce serveur.")
+
+        raise HTTPException(
+            status_code=503,
+            detail="Le mode demo est desactive mais aucun fournisseur IA n'est pret. Configurez OPENAI_API_KEY ou OLLAMA_MODEL.",
+        )
+
+    def _ollama_is_ready(self) -> bool:
+        return bool(self.settings.ollama_model and self.settings.ollama_base_url)
+
+    async def _openai_answer(self, prompt: list[dict[str, Any]]) -> str:
+        if not self.client:
+            raise HTTPException(status_code=503, detail="Le fournisseur OpenAI n'est pas initialisable sur ce serveur.")
         try:
-            prompt = await self._build_prompt(payload, language, context)
             response = await self.client.responses.create(**self._build_openai_request(prompt))
         except OpenAIError as exc:
             error_message = self._extract_openai_error_message(exc)
@@ -110,8 +153,52 @@ class ChatService:
         answer = (response.output_text or "").strip()
         if not answer:
             raise HTTPException(status_code=502, detail="La réponse IA est vide. Merci de réessayer.")
+        return answer
 
-        return ChatResponse(answer=answer, language=language, source="openai", user_id=user_id)
+    async def _ollama_answer(self, prompt: list[dict[str, Any]]) -> str:
+        payload: dict[str, Any] = {
+            "model": self.settings.ollama_model,
+            "messages": self._build_ollama_messages(prompt),
+            "stream": False,
+        }
+        if self.settings.ollama_keep_alive:
+            payload["keep_alive"] = self.settings.ollama_keep_alive
+        if self.settings.openai_temperature is not None:
+            payload["options"] = {"temperature": self.settings.openai_temperature}
+
+        base_url = self.settings.ollama_base_url.rstrip("/")
+        timeout = httpx.Timeout(120.0, connect=10.0)
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(f"{base_url}/api/chat", json=payload)
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPStatusError as exc:
+            body = exc.response.text.strip()
+            detail = body or f"HTTP {exc.response.status_code}"
+            raise HTTPException(status_code=502, detail=f"Erreur du fournisseur IA (Ollama): {detail}") from exc
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Erreur du fournisseur IA (Ollama): {str(exc).strip() or 'serveur Ollama indisponible'}",
+            ) from exc
+
+        answer = str((data.get("message", {}) or {}).get("content", "")).strip()
+        if not answer:
+            answer = str(data.get("response", "")).strip()
+        if not answer:
+            raise HTTPException(status_code=502, detail="La reponse Ollama est vide. Merci de verifier le modele local.")
+        return answer
+
+    def _build_ollama_messages(self, prompt: list[dict[str, Any]]) -> list[dict[str, str]]:
+        messages: list[dict[str, str]] = []
+        for item in prompt:
+            text_parts = [part.get("text", "").strip() for part in item.get("content", []) if part.get("text")]
+            content = "\n\n".join(part for part in text_parts if part)
+            if content:
+                messages.append({"role": item["role"], "content": content})
+        return messages
 
     async def _build_prompt(self, payload: ChatRequest, language: str, context: dict[str, Any]) -> list[dict[str, Any]]:
         prompt: list[dict[str, Any]] = [{

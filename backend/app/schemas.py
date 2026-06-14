@@ -36,7 +36,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     language: str
-    source: Literal["demo", "openai"]
+    source: Literal["demo", "openai", "ollama"]
     user_id: str
 
 

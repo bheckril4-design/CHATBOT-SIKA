@@ -20,11 +20,16 @@ class Settings(BaseSettings):
     trusted_hosts: str = (
         "sika-api.oceanicconseils.com,sika.oceanicconseils.com,www.sika.oceanicconseils.com,localhost,127.0.0.1,testserver"
     )
+    serve_frontend_from_backend: bool = False
+    ai_provider: str = "auto"
     openai_api_key: str | None = None
     openai_model: str = "gpt-5.2"
     openai_reasoning_effort: str = "medium"
     openai_text_verbosity: str = "medium"
     openai_temperature: float | None = 0.2
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str | None = None
+    ollama_keep_alive: str = "10m"
     max_history_messages: int = 16
     rate_limit_per_minute: int = 30
     market_data_provider: str = "demo"
